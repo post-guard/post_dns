@@ -1,5 +1,6 @@
 #include "stdlib.h"
 #include "uv.h"
+#include "stdio.h"
 
 int main()
 {
@@ -12,5 +13,6 @@ int main()
     uv_loop_close(loop);
     free(loop);
 
+    printf("Hello, libuv!\n");
     return 0;
 }
