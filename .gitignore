@@ -1,0 +1,4 @@
+# CMake Building Directory
+cmake-build-*/
+build/
+
