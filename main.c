@@ -1,6 +1,7 @@
 #include "stdlib.h"
 #include "uv.h"
 #include "stdio.h"
+#include "string.h"
 
 uv_udp_t bind_socket;
 
@@ -23,11 +24,11 @@ static void udp_on_read(
     char sender[17] = {};
     uv_ip4_name((struct sockaddr_in *)address, sender, 16);
     printf("Receive data from %s\n", sender);
-    printf("Data length: %zu\n", buf->len);
+    printf("Data length: %zu\n", number);
     printf("Data: ");
-    for (int i = 0; i < buf->len; i++)
+    for (int i = 0; i < number; i++)
     {
-        printf("%d", buf->base[i]);
+        printf("%.2x", buf->base[i]);
     }
     printf("\n");
 }
