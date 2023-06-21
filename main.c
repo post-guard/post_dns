@@ -14,13 +14,15 @@ static void udp_alloc_buffer(uv_handle_t *handle, size_t suggest_size, uv_buf_t 
 static void udp_on_read(
         uv_udp_t *request, ssize_t number, const uv_buf_t *buf, const struct sockaddr *address, unsigned flags)
 {
-    if (number < 0)
+    if (number <= 0)
     {
+        // 实际收到的包长度可能为零
         return;
     }
 
     // 获得发送方地址
     // 这里获得的buf长度有问题 是65535
+    printf("hello\n");
     char sender[17] = {};
     uv_ip4_name((struct sockaddr_in *)address, sender, 16);
     printf("Receive data from %s\n", sender);
@@ -31,6 +33,7 @@ static void udp_on_read(
         printf("%.2x", buf->base[i]);
     }
     printf("\n");
+    printf("bye\n");
 }
 
 int main()
