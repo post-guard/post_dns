@@ -8,6 +8,6 @@
 typedef enum {
     false,
     true
-} boolean;
+} bool;
 
 #endif //POST_DNS_BOOLEAN_H

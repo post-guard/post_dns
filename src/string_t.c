@@ -29,7 +29,7 @@ void string_t_free(string_t *pointer)
     free(pointer);
 }
 
-boolean string_t_equal(const string_t *a, const string_t *b)
+bool string_t_equal(const string_t *a, const string_t *b)
 {
     if (a == NULL || b == NULL)
     {
@@ -41,7 +41,7 @@ boolean string_t_equal(const string_t *a, const string_t *b)
         return false;
     }
 
-    boolean flag = true;
+    bool flag = true;
 
     for (int i = 0; i < a->length; i++)
     {

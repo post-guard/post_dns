@@ -34,6 +34,6 @@ void string_t_free(string_t *pointer);
  * @param b 第二个字符串
  * @return true相等 反之false
  */
-boolean string_t_equal(const string_t *a, const string_t *b);
+bool string_t_equal(const string_t *a, const string_t *b);
 
 #endif //POST_DNS_STRING_T_H
