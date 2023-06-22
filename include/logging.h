@@ -5,6 +5,10 @@
 #ifndef POST_DNS_LOGGING_H
 #define POST_DNS_LOGGING_H
 
+#ifdef __WIN32
+#define __FILE_NAME__ __FILE__
+#endif
+
 typedef enum {
     logging_debug_level,
     logging_information_level,
