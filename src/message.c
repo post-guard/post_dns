@@ -15,7 +15,7 @@ message_t *buf2message(const uv_buf_t *buf){
 
     message.id = ( ( 0 | buf->base[0] ) << 8 ) | buf->base[1];
 
-    char *flags = (char *)malloc(8*sizeof(char));;
+    char *flags = (char *)malloc(16*sizeof(char));;
     char2bit(buf->base[2],&flags[0]);
     char2bit(buf->base[3],&flags[8]);
 
@@ -125,7 +125,7 @@ void char2bit(char ch,char *bit){
          * 化成二进制时，从右数是第几位就向右边移动几位（注意：下标从零开始）然后在与上1
          * 7-j是因为按大端存储
         */
-        bit[7-j] = (ch<<j)&1;
+        bit[7-j] = (ch >> j) & 1;
     }
 
 }
