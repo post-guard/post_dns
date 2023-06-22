@@ -36,4 +36,6 @@ message_t *buf2message(const uv_buf_t *buf);
 void printMessage(message_t *message);
 
 void char2bit(char ch,char *bit);
+
+void printfUnsignedStr(const char *base,int length);
 #endif //POST_DNS_MESSAGE_H

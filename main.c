@@ -31,10 +31,9 @@ static void udp_on_read(
     printf("Receive data from %s\n", sender);
     printf("Data length: %zu\n", number);
     printf("Data: ");
-    for (int i = 0; i < number; i++)
-    {
-        printf("%.2x", buf->base[i]);
-    }
+
+    printfUnsignedStr(buf->base,number);
+
     printf("\n");
     buf2message(buf);
     printf("bye\n");

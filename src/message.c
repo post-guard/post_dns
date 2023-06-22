@@ -35,7 +35,7 @@ message_t *buf2message(const uv_buf_t *buf){
 void printMessage(message_t *message){
 
     printf("------DNS Message------\n");
-    printf("id: %x\n",message->id);
+    printf("id: %x\n",(unsigned short)message->id);
 
     printf("Flags\n");
 
@@ -128,4 +128,12 @@ void char2bit(char ch,char *bit){
         bit[7-j] = (ch >> j) & 1;
     }
 
+}
+
+void printfUnsignedStr(const char *base,int length){
+    const unsigned char* data = (const unsigned char *)base;
+    for (int i = 0; i < length; i++)
+    {
+        printf("%.2x", data[i]);
+    }
 }
