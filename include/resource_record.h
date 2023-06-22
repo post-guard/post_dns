@@ -20,6 +20,6 @@ typedef struct {
     string_t *name;
     short type;
     short class;
-} resource_record_query;
+} query_t;
 
 #endif //POST_DNS_RESOURCE_RECORD_H
