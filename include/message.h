@@ -34,4 +34,6 @@ uv_buf_t *message2buf(message_t *message);
 message_t *buf2message(const uv_buf_t *buf);
 
 void printMessage(message_t *message);
+
+void char2bit(char ch,char *bit);
 #endif //POST_DNS_MESSAGE_H
