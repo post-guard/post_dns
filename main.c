@@ -2,9 +2,7 @@
 #include "message.h"
 #include "uv.h"
 #include "stdio.h"
-#include "string.h"
-
-
+#include "logging.h"
 
 uv_udp_t bind_socket;
 
@@ -50,5 +48,9 @@ int main()
     uv_udp_bind(&bind_socket, (const struct sockaddr *)&bind_address, UV_UDP_REUSEADDR);
     uv_udp_recv_start(&bind_socket, udp_alloc_buffer, udp_on_read);
 
+    log_information("开始监听localhost 53端口");
+    log_debug("debug信息");
+    log_warning("警告：这是一个警告");
+    log_error("错误：大作业即将失败");
     return uv_run(loop, UV_RUN_DEFAULT);
 }
