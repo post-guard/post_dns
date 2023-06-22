@@ -5,10 +5,20 @@
 #ifndef POST_DNS_MESSAGE_H
 #define POST_DNS_MESSAGE_H
 #include "resource_record.h"
+typedef struct {
+    char QR;
+    char Opcode;
+    char AA;
+    char TC;
+    char RD;
+    char RA;
+    char Z;
+    char RCODE;
+} flags_t;
 
 typedef struct {
     short id;
-    short flags;
+    flags_t flags;
     unsigned short query_count;
     unsigned short answer_count;
     unsigned short nameserver_count;
@@ -21,6 +31,7 @@ typedef struct {
 
 uv_buf_t *message2buf(message_t *message);
 
-message_t *buf2message(uv_buf_t *buf);
+message_t *buf2message(const uv_buf_t *buf);
 
+void printMessage(message_t *message);
 #endif //POST_DNS_MESSAGE_H

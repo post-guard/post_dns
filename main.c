@@ -1,7 +1,10 @@
 #include "stdlib.h"
+#include "message.h"
 #include "uv.h"
 #include "stdio.h"
 #include "string.h"
+
+
 
 uv_udp_t bind_socket;
 
@@ -22,7 +25,7 @@ static void udp_on_read(
 
     // 获得发送方地址
     // 这里获得的buf长度有问题 是65535
-    printf("hello\n");
+    printf("\nhello\n");
     char sender[17] = {};
     uv_ip4_name((struct sockaddr_in *)address, sender, 16);
     printf("Receive data from %s\n", sender);
@@ -33,6 +36,7 @@ static void udp_on_read(
         printf("%.2x", buf->base[i]);
     }
     printf("\n");
+    buf2message(buf);
     printf("bye\n");
 }
 
