@@ -33,6 +33,9 @@ uv_buf_t *message2buf(message_t *message);
 
 message_t *buf2message(const uv_buf_t *buf);
 
+message_t *buf2messageHeader(const uv_buf_t *buf,message_t *message);
+message_t *buf2messageQuestion(const uv_buf_t *buf,message_t *message);
+
 void printMessage(message_t *message);
 
 void char2bit(char ch,char *bit);

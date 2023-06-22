@@ -3,6 +3,7 @@
 // 解析和封装DNS报文
 //
 #include "message.h"
+#include "stdlib.h"
 
 uv_buf_t *message2buf(message_t *message){
 
@@ -11,27 +12,53 @@ uv_buf_t *message2buf(message_t *message){
 message_t *buf2message(const uv_buf_t *buf){
 
     // 统一使用大端
-    message_t message;
+    message_t *message = (message_t *) malloc((sizeof(message_t)));
 
-    message.id = ( ( 0 | buf->base[0] ) << 8 ) | buf->base[1];
+
+    message = buf2messageHeader(buf,message);
+    printMessage(message);
+
+}
+
+
+message_t *buf2messageHeader(const uv_buf_t *buf,message_t *message){
+
+    message->id = ( ( 0 | buf->base[0] ) << 8 ) | (buf->base[1] & 0xFF);
 
     char *flags = (char *)malloc(16*sizeof(char));;
     char2bit(buf->base[2],&flags[0]);
     char2bit(buf->base[3],&flags[8]);
 
-    message.flags.QR = flags[0];
-    message.flags.Opcode = (flags[1] << 3) + (flags[2] << 2) + (flags[3] << 1) + flags[4];
-    message.flags.AA = flags[5];
-    message.flags.TC = flags[6];
-    message.flags.RD = flags[7];
-    message.flags.RA = flags[8];
-    message.flags.Z = (flags[9] << 2) + (flags[10] << 1) + flags[11];
-    message.flags.RCODE = (flags[12] << 3) + (flags[13] << 2) + (flags[14] << 1) + flags[15];
+    message->flags.QR = flags[0];
+    message->flags.Opcode = (flags[1] << 3) + (flags[2] << 2) + (flags[3] << 1) + flags[4];
+    message->flags.AA = flags[5];
+    message->flags.TC = flags[6];
+    message->flags.RD = flags[7];
+    message->flags.RA = flags[8];
+    message->flags.Z = (flags[9] << 2) + (flags[10] << 1) + flags[11];
+    message->flags.RCODE = (flags[12] << 3) + (flags[13] << 2) + (flags[14] << 1) + flags[15];
 
-    printMessage(&message);
+    message->query_count = (unsigned short)(( ( 0 | buf->base[4] ) << 8 ) | ( buf->base[5] & 0xFF ));
+    message->answer_count = (unsigned short)(( ( 0 | buf->base[6] ) << 8 ) | ( buf->base[7] & 0xFF ));
+    message->nameserver_count = (unsigned short)(( ( 0 | buf->base[8] ) << 8 ) | ( buf->base[9] & 0xFF ));
+    message->additional_count = (unsigned short)(( ( 0 | buf->base[10] ) << 8 ) | ( buf->base[11] & 0xFF ));
     free(flags);
+
+    return message;
 }
 
+message_t *buf2messageQuestion(const uv_buf_t *buf,message_t *message){
+
+    for(int num = 0;num < message->query_count;num++){
+
+    }
+}
+
+
+/**
+ * 打印DNSmessage报文内容
+ * @param message 要打印的报文
+ */
 void printMessage(message_t *message){
 
     printf("------DNS Message------\n");
@@ -116,8 +143,12 @@ void printMessage(message_t *message){
     printf("ARCOUNT: %hu\n",message->additional_count);
 }
 
+/**
+ * 将传入的char中的每一位分离到str数组中
+ * @param ch 要传入的char
+ * @param bit 输出的八位bit数组指针
+ */
 void char2bit(char ch,char *bit){
-    // 将char中的每一位分离到str数组中
 
     for (int j = 0;j < 8;j++)
     {
@@ -127,9 +158,13 @@ void char2bit(char ch,char *bit){
         */
         bit[7-j] = (ch >> j) & 1;
     }
-
 }
 
+/**
+ * 以无符号形式输出字符串
+ * @param base 待输出字符串
+ * @param length 字符串长度
+ */
 void printfUnsignedStr(const char *base,int length){
     const unsigned char* data = (const unsigned char *)base;
     for (int i = 0; i < length; i++)
