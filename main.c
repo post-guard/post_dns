@@ -75,6 +75,7 @@ static void query_on_read(
     printf("\n");
 
     log_information("开始分析数据:");
+    buf->base[number] = '\0';
     buf2message(buf);
     printf("\n");
 

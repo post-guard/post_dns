@@ -26,8 +26,9 @@ message_t *buf2message(const uv_buf_t *buf){
     if(buf->base[endPos] != 0){
         message = buf2messageQuestion(&buf->base[endPos],message,&endPos);
     }
+
     if(buf->base[endPos] != 0){
-        message = buf2messageRR(&buf->base[endPos],message,&endPos,Answer);
+        message = buf2messageRR(buf->base,message,&endPos,Answer);
     }
     /*if(&buf->base[endPos]!= NULL){
         message = buf2messageQuestion(&buf->base[endPos],message,&endPos);
@@ -39,8 +40,8 @@ message_t *buf2message(const uv_buf_t *buf){
 
 message_t *buf2messageHeader(const uv_buf_t *buf,message_t *message){
 
-    message->id = ( ( 0 | buf->base[0] ) << 8 ) | (buf->base[1] & 0xFF);
-
+    //message->id = ( ( 0 | buf->base[0] ) << 8 ) | (buf->base[1] & 0xFF);
+    message->id = char2Short(buf->base[0],buf->base[1]);
     char *flags = (char *)malloc(16*sizeof(char));;
     char2bit(buf->base[2],&flags[0]);
     char2bit(buf->base[3],&flags[8]);
@@ -73,7 +74,7 @@ message_t *buf2messageQuestion(const char *buf,message_t *message,int *endPos){
         // QNAME
 
         int QValuePos = 0;
-        char QValue[512];
+        char QValue[512]={};
 
         while(buf[bufPos]!=0){
             int letterLength = (unsigned char)buf[bufPos];
@@ -94,11 +95,13 @@ message_t *buf2messageQuestion(const char *buf,message_t *message,int *endPos){
         bufPos++;
 
         // QTYPE
-        message->queries[entryNum].type = ( ( 0 | buf[bufPos] ) << 8 ) | (buf[bufPos+1] & 0xFF);
+        // message->queries[entryNum].type = ( ( 0 | buf[bufPos] ) << 8 ) | (buf[bufPos+1] & 0xFF);
+        message->queries[entryNum].type = char2Short(buf[bufPos],buf[bufPos+1]);
         bufPos+=2;
 
         // QCLASS
-        message->queries[entryNum].class = ( ( 0 | buf[bufPos] ) << 8 ) | (buf[bufPos+1] & 0xFF);
+        // message->queries[entryNum].class = ( ( 0 | buf[bufPos] ) << 8 ) | (buf[bufPos+1] & 0xFF);
+        message->queries[entryNum].class = char2Short(buf[bufPos],buf[bufPos+1]);
         bufPos+=2;
     }
     *endPos += bufPos;
@@ -113,34 +116,71 @@ message_t *buf2messageRR(const char *buf,message_t *message,int *endPos,enum RR_
     resource_record_t *resourceRecord;
     unsigned short resourceRecordCount = 0;
 
+
     switch (type) {
         case Answer:
             resourceRecordCount = message->answer_count;
             resourceRecord = (resource_record_t *) malloc(resourceRecordCount * sizeof (resource_record_t));
+            message->answers = resourceRecord;
             break;
         case Authority:
             resourceRecordCount = message->nameserver_count;
             resourceRecord = (resource_record_t *) malloc(resourceRecordCount * sizeof (resource_record_t));
+            message->authorities = resourceRecord;
             break;
         case Additional:
             resourceRecordCount = message->additional_count;
             resourceRecord = (resource_record_t *) malloc(resourceRecordCount * sizeof (resource_record_t));
+            message->additional = resourceRecord;
             break;
         default:;
     }
 
     for (int entryNum = 0; entryNum < resourceRecordCount ; entryNum++) {
         // NAME
-        char Name[512];
+        char Name[512]={};
         int namePos = 0;
 
         bufPos = createName(buf,bufPos,Name,&namePos);
 
         Name[namePos-1]='\0';
         char result[namePos];
-        message->answers[entryNum].name = string_t_malloc(strcpy(result,Name),namePos - 1);
+        resourceRecord[entryNum].name = string_t_malloc(strcpy(result,Name),namePos - 1);
         // 注意这个length不包括末尾的\0
         bufPos++;
+
+        //TYPE
+        resourceRecord[entryNum].type = char2Short(buf[bufPos],buf[bufPos+1]);
+        bufPos+=2;
+
+        //CLASS
+        resourceRecord[entryNum].class = char2Short(buf[bufPos],buf[bufPos+1]);
+        bufPos+=2;
+
+        //TTL
+        resourceRecord[entryNum].ttl = ( ( 0 | char2Short(buf[bufPos],buf[bufPos+1]) ) << 16 ) | ( char2Short (buf[bufPos+2],buf[bufPos+3] ) & 0xFF);
+        // 这里把两个short合成一个int
+        bufPos+=4;
+
+        //RDLENGTH
+        resourceRecord[entryNum].response_data_length = char2Short(buf[bufPos],buf[bufPos+1]);
+        bufPos+=2;
+
+        //RDATA
+        switch (resourceRecord[entryNum].type) {
+            case 1:
+                // A
+                break;
+            case 5:
+                // CNAME
+                break;
+            case 28:
+                // AAAA
+                break;
+            default:
+                ;
+        }
+
     }
     return message;
 }
@@ -329,4 +369,9 @@ void printfUnsignedStr(const char *base,int length){
     {
         printf("%.2x", data[i]);
     }
+}
+
+
+short char2Short(char high,char low){
+    return ( ( 0 | high ) << 8 ) | (low & 0xFF);
 }

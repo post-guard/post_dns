@@ -46,4 +46,6 @@ void printMessage(message_t *message);
 void char2bit(char ch,char *bit);
 
 void printfUnsignedStr(const char *base,int length);
+
+short char2Short(char high,char low);
 #endif //POST_DNS_MESSAGE_H
