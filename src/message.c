@@ -5,6 +5,8 @@
 #include "message.h"
 #include "stdlib.h"
 
+int createName(const char *,int,char[],int *);
+
 uv_buf_t *message2buf(message_t *message){
 
 }
@@ -15,9 +17,20 @@ message_t *buf2message(const uv_buf_t *buf){
     message_t *message = (message_t *) malloc((sizeof(message_t)));
 
     int endPos = 0;
+    // 指示解析完一个字段后，报文下一个到达的字节数
 
     message = buf2messageHeader(buf,message);
-    message = buf2messageQuestion(&buf->base[12],message,&endPos);
+    endPos = 12;
+
+    if(buf->base[endPos] != 0){
+        message = buf2messageQuestion(&buf->base[endPos],message,&endPos);
+    }
+    if(buf->base[endPos] != 0){
+        message = buf2messageRR(&buf->base[endPos],message,&endPos,Answer);
+    }
+    /*if(&buf->base[endPos]!= NULL){
+        message = buf2messageQuestion(&buf->base[endPos],message,&endPos);
+    }*/
     printMessage(message);
 
 }
@@ -58,8 +71,8 @@ message_t *buf2messageQuestion(const char *buf,message_t *message,int *endPos){
     for(int entryNum = 0 ; entryNum < message->query_count ; entryNum++) {
         // QNAME
 
-        int QValueNum = 0;
-        char QValue[100];
+        int QValuePos = 0;
+        char QValue[512];
 
         while(buf[bufPos]!=0){
             int letterLength = (unsigned char)buf[bufPos];
@@ -67,17 +80,18 @@ message_t *buf2messageQuestion(const char *buf,message_t *message,int *endPos){
             bufPos++;
 
             for(int letterNum = 0;letterNum < letterLength; letterNum++) {
-                QValue[QValueNum+letterNum] = buf[bufPos];
+                QValue[QValuePos+letterNum] = buf[bufPos];
                 bufPos++;
             }
-            QValue[QValueNum+letterLength] = '.';
-            QValueNum += letterLength + 1;
+            QValue[QValuePos+letterLength] = '.';
+            QValuePos += letterLength + 1;
         }
-        QValue[QValueNum-1]='\0';
-        char QResult[QValueNum];
-        message->queries[entryNum].name = string_t_malloc(strcpy(QResult,QValue),QValueNum - 1);
-
+        QValue[QValuePos-1]='\0';
+        char QResult[QValuePos];
+        message->queries[entryNum].name = string_t_malloc(strcpy(QResult,QValue),QValuePos - 1);
+        // 注意这个length不包括末尾的\0
         bufPos++;
+
         // QTYPE
         message->queries[entryNum].type = ( ( 0 | buf[bufPos] ) << 8 ) | (buf[bufPos+1] & 0xFF);
         bufPos+=2;
@@ -86,8 +100,81 @@ message_t *buf2messageQuestion(const char *buf,message_t *message,int *endPos){
         message->queries[entryNum].class = ( ( 0 | buf[bufPos] ) << 8 ) | (buf[bufPos+1] & 0xFF);
         bufPos+=2;
     }
-
+    *endPos += bufPos;
+    // 更新末尾指针
     return message;
+}
+
+
+message_t *buf2messageRR(const char *buf,message_t *message,int *endPos,enum RR_TYPE type){
+
+    int bufPos = *endPos;
+    resource_record_t *resourceRecord;
+    unsigned short resourceRecordCount = 0;
+
+    switch (type) {
+        case Answer:
+            resourceRecordCount = message->answer_count;
+            resourceRecord = (resource_record_t *) malloc(resourceRecordCount * sizeof (resource_record_t));
+            break;
+        case Authority:
+            resourceRecordCount = message->nameserver_count;
+            resourceRecord = (resource_record_t *) malloc(resourceRecordCount * sizeof (resource_record_t));
+            break;
+        case Additional:
+            resourceRecordCount = message->additional_count;
+            resourceRecord = (resource_record_t *) malloc(resourceRecordCount * sizeof (resource_record_t));
+            break;
+        default:;
+    }
+
+    for (int entryNum = 0; entryNum < resourceRecordCount ; entryNum++) {
+        // NAME
+        char Name[512];
+        int namePos = 0;
+
+        bufPos = createName(buf,bufPos,Name,&namePos);
+
+        Name[namePos-1]='\0';
+        char result[namePos];
+        message->answers[entryNum].name = string_t_malloc(strcpy(result,Name),namePos - 1);
+        // 注意这个length不包括末尾的\0
+        bufPos++;
+    }
+    return message;
+}
+
+/**
+ * 采用递归方式在buffer中查找NAME字段
+ * @param bufPos 要跳转到的起始字节
+ * @param Name 组成NAME的数组
+ * @param namePos 组成NAME的数组的当前大小
+ * @return int 跳转前的所在字节
+ */
+int createName(const char *buf,int bufPos,char Name[],int *namePos){
+    while(buf[bufPos]!=0){
+        if((buf[bufPos] & 0xC0) == 0xC0){
+            // 检测到报文跳转指针
+            bufPos++;
+            //bufPos = (unsigned char) buf[bufPos];
+            // 指向要跳转的位置
+            createName(buf,(unsigned char) buf[bufPos],Name,namePos);
+
+            return bufPos;
+        }
+
+        int letterLength = (unsigned char)buf[bufPos];
+
+        bufPos++;
+
+        for(int letterNum = 0;letterNum < letterLength; letterNum++) {
+            Name[*namePos+letterNum] = buf[bufPos];
+            bufPos++;
+        }
+        Name[*namePos+letterLength] = '.';
+        *namePos += letterLength + 1;
+    }
+    return bufPos;
 }
 
 
@@ -194,6 +281,22 @@ void printMessage(message_t *message){
 
     printf("QTYPE: %hu\n",message->queries->type);
     printf("QCLASS: %hu\n",message->queries->class);
+
+    if (message->answer_count > 0) {
+        printf("[ANSWER]\n");
+        for(int responseNum = 0;responseNum < message->answer_count;responseNum++){
+            printf("[RESPONSE %d]\n",responseNum);
+
+            printf("NAME: ");
+            for(int labelNum = 0;labelNum < (sizeof *(message->answers[responseNum].name))/(sizeof (string_t)); labelNum++){
+                for(int letterNum = 0;letterNum < message->answers[responseNum].name[labelNum].length;letterNum++){
+                    printf("%c",message->answers[responseNum].name[labelNum].value[letterNum]);
+                }
+                printf(labelNum == (sizeof *(message->answers[responseNum].name))/(sizeof (string_t))-1?"":".");
+            }
+            printf("\n");
+        }
+    }
 
 }
 
