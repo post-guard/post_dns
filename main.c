@@ -30,6 +30,8 @@ static void udp_on_read(
     printf("Data length: %zu\n", number);
     printf("Data: ");
 
+    buf->base[number] = '\0';
+    // 修改buffer末尾加入一个字符串结束标志
     printfUnsignedStr(buf->base,number);
 
     printf("\n");
