@@ -23,7 +23,7 @@ typedef struct {
     unsigned short answer_count;
     unsigned short nameserver_count;
     unsigned short additional_count;
-    resource_record_t *queries;
+    query_t *queries;
     resource_record_t *answers;
     resource_record_t *authorities;
     resource_record_t *additional;
@@ -34,7 +34,7 @@ uv_buf_t *message2buf(message_t *message);
 message_t *buf2message(const uv_buf_t *buf);
 
 message_t *buf2messageHeader(const uv_buf_t *buf,message_t *message);
-message_t *buf2messageQuestion(const uv_buf_t *buf,message_t *message);
+message_t *buf2messageQuestion(const char *buf,message_t *message,int *endPos);
 
 void printMessage(message_t *message);
 

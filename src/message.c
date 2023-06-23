@@ -14,8 +14,10 @@ message_t *buf2message(const uv_buf_t *buf){
     // 统一使用大端
     message_t *message = (message_t *) malloc((sizeof(message_t)));
 
+    int endPos = 0;
 
     message = buf2messageHeader(buf,message);
+    message = buf2messageQuestion(&buf->base[12],message,&endPos);
     printMessage(message);
 
 }
@@ -47,11 +49,45 @@ message_t *buf2messageHeader(const uv_buf_t *buf,message_t *message){
     return message;
 }
 
-message_t *buf2messageQuestion(const uv_buf_t *buf,message_t *message){
+message_t *buf2messageQuestion(const char *buf,message_t *message,int *endPos){
 
-    for(int num = 0;num < message->query_count;num++){
+    int bufPos = 0;
 
+    message->queries = (query_t *) malloc(message->query_count*sizeof (query_t));
+
+    for(int entryNum = 0 ; entryNum < message->query_count ; entryNum++) {
+        // QNAME
+
+        int QValueNum = 0;
+        char QValue[100];
+
+        while(buf[bufPos]!=0){
+            int letterLength = (unsigned char)buf[bufPos];
+
+            bufPos++;
+
+            for(int letterNum = 0;letterNum < letterLength; letterNum++) {
+                QValue[QValueNum+letterNum] = buf[bufPos];
+                bufPos++;
+            }
+            QValue[QValueNum+letterLength] = '.';
+            QValueNum += letterLength + 1;
+        }
+        QValue[QValueNum-1]='\0';
+        char QResult[QValueNum];
+        message->queries[entryNum].name = string_t_malloc(strcpy(QResult,QValue),QValueNum - 1);
+
+        bufPos++;
+        // QTYPE
+        message->queries[entryNum].type = ( ( 0 | buf[bufPos] ) << 8 ) | (buf[bufPos+1] & 0xFF);
+        bufPos+=2;
+
+        // QCLASS
+        message->queries[entryNum].class = ( ( 0 | buf[bufPos] ) << 8 ) | (buf[bufPos+1] & 0xFF);
+        bufPos+=2;
     }
+
+    return message;
 }
 
 
@@ -64,7 +100,7 @@ void printMessage(message_t *message){
     printf("------DNS Message------\n");
     printf("id: %x\n",(unsigned short)message->id);
 
-    printf("Flags\n");
+    printf("[Flags]\n");
 
     printf("QR: %c  ",message->flags.QR+48);
     printf(message->flags.QR==0?"Query\n":"Response\n");
@@ -141,6 +177,24 @@ void printMessage(message_t *message){
     printf("ANCOUNT: %hu\n",message->answer_count);
     printf("NSCOUNT: %hu\n",message->nameserver_count);
     printf("ARCOUNT: %hu\n",message->additional_count);
+
+    printf("[QUESTION]\n");
+    for(int queryNum = 0;queryNum < message->query_count;queryNum++){
+        printf("[Query %d]\n",queryNum);
+
+        printf("QNAME: ");
+        for(int labelNum = 0;labelNum < (sizeof *(message->queries[queryNum].name))/(sizeof (string_t)); labelNum++){
+            for(int letterNum = 0;letterNum < message->queries[queryNum].name[labelNum].length;letterNum++){
+                printf("%c",message->queries[queryNum].name[labelNum].value[letterNum]);
+            }
+            printf(labelNum == (sizeof *(message->queries[queryNum].name))/(sizeof (string_t))-1?"":".");
+        }
+        printf("\n");
+    }
+
+    printf("QTYPE: %hu\n",message->queries->type);
+    printf("QCLASS: %hu\n",message->queries->class);
+
 }
 
 /**
