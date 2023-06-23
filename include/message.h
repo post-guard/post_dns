@@ -29,12 +29,17 @@ typedef struct {
     resource_record_t *additional;
 } message_t;
 
+enum RR_TYPE{
+    Header,Question,Answer,Authority,Additional
+};
+
 uv_buf_t *message2buf(message_t *message);
 
 message_t *buf2message(const uv_buf_t *buf);
 
 message_t *buf2messageHeader(const uv_buf_t *buf,message_t *message);
 message_t *buf2messageQuestion(const char *buf,message_t *message,int *endPos);
+message_t *buf2messageRR(const char *buf,message_t *message,int *endPos,enum RR_TYPE type);
 
 void printMessage(message_t *message);
 
