@@ -54,3 +54,15 @@ bool string_t_equal(const string_t *a, const string_t *b)
 
     return flag;
 }
+
+int string_t_hash_code(const string_t *str)
+{
+    int result = 0;
+
+    for (int i = 0; i < str->length; i++)
+    {
+        result = result * 31 + str->value[i];
+    }
+
+    return result;
+}

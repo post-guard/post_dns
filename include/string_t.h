@@ -36,4 +36,11 @@ void string_t_free(string_t *pointer);
  */
 bool string_t_equal(const string_t *a, const string_t *b);
 
+/**
+ * 计算字符串的哈希值
+ * @param str 字符串指针
+ * @return 哈希值
+ */
+int string_t_hash_code(const string_t *str);
+
 #endif //POST_DNS_STRING_T_H
