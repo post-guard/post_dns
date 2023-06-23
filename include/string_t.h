@@ -14,6 +14,11 @@ typedef struct {
     int length;
 } string_t;
 
+typedef struct {
+    string_t **array;
+    int length;
+} split_array_t;
+
 /**
  * 初始化一个字符串
  * @param value 字符串字面值
@@ -42,5 +47,20 @@ bool string_t_equal(const string_t *a, const string_t *b);
  * @return 哈希值
  */
 int string_t_hash_code(const string_t *str);
+
+/**
+ * 按照给定的字符分割字符串
+ * @param str 需要被分割的字符串
+ * @param separator 分割符
+ * @return 分割结果数组
+ */
+split_array_t *string_t_split(const string_t *str, char separator);
+
+/**
+ * 打印字符串
+ * 没有换行符
+ * @param str 需要被打印的字符串
+ */
+void string_t_print(const string_t *str);
 
 #endif //POST_DNS_STRING_T_H

@@ -4,6 +4,7 @@
 //
 #include "message.h"
 #include "stdlib.h"
+#include "string.h"
 
 int createName(const char *,int,char[],int *);
 
