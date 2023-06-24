@@ -7,7 +7,8 @@
 #include "string.h"
 
 int createName(const char *,int,char[],int *);
-
+int createRData(const char *,int,char[],int *,int,int);
+int createRDataAddress(const char *,int,char[],int *,int,int);
 uv_buf_t *message2buf(message_t *message){
 
 }
@@ -15,6 +16,7 @@ uv_buf_t *message2buf(message_t *message){
 message_t *buf2message(const uv_buf_t *buf){
 
     // 统一使用大端
+    // 报头
     message_t *message = (message_t *) malloc((sizeof(message_t)));
 
     int endPos = 0;
@@ -22,17 +24,15 @@ message_t *buf2message(const uv_buf_t *buf){
 
     message = buf2messageHeader(buf,message);
     endPos = 12;
-
+    // Question段
     if(buf->base[endPos] != 0){
         message = buf2messageQuestion(&buf->base[endPos],message,&endPos);
     }
-
+    // Answer段
     if(buf->base[endPos] != 0){
         message = buf2messageRR(buf->base,message,&endPos,Answer);
     }
-    /*if(&buf->base[endPos]!= NULL){
-        message = buf2messageQuestion(&buf->base[endPos],message,&endPos);
-    }*/
+
     printMessage(message);
 
 }
@@ -158,7 +158,7 @@ message_t *buf2messageRR(const char *buf,message_t *message,int *endPos,enum RR_
         bufPos+=2;
 
         //TTL
-        resourceRecord[entryNum].ttl = ( ( 0 | char2Short(buf[bufPos],buf[bufPos+1]) ) << 16 ) | ( char2Short (buf[bufPos+2],buf[bufPos+3] ) & 0xFF);
+        resourceRecord[entryNum].ttl = ( ( 0 | char2Short(buf[bufPos],buf[bufPos+1]) ) << 16 ) | ( char2Short (buf[bufPos+2],buf[bufPos+3] ) & 0xFFFF);
         // 这里把两个short合成一个int
         bufPos+=4;
 
@@ -167,23 +167,34 @@ message_t *buf2messageRR(const char *buf,message_t *message,int *endPos,enum RR_
         bufPos+=2;
 
         //RDATA
+
+        char RData[512]={};
+        int RDataPos = 0;
+
+        bufPos = createRData(buf,bufPos,RData,&RDataPos,resourceRecord[entryNum].type,resourceRecord[entryNum].response_data_length);
+        bufPos++;
+
+        //只有对A、CNAME、AAAA有处理，其余类型都直接跳过
         switch (resourceRecord[entryNum].type) {
             case 1:
-                // A
-                break;
             case 5:
-                // CNAME
-                break;
             case 28:
-                // AAAA
-                break;
-            default:
-                ;
-        }
+                RData[RDataPos-1]='\0';
+                //char RDataResult[RDataPos];
+                string_t *RDataResult = (string_t *) malloc(sizeof(string_t));
 
+                RDataResult->value = (char *) malloc(sizeof(char) * RDataPos);
+                RDataResult->length = RDataPos - 1;
+                // 注意这个length不包括末尾的\0
+                memcpy(RDataResult->value, RData,RDataPos);
+                resourceRecord[entryNum].response_data = RDataResult;
+                //resourceRecord[entryNum].response_data = string_t_malloc(strcpy(RDataResult,RData),RDataPos - 1);
+                break;
+        }
     }
     return message;
 }
+
 
 /**
  * 采用递归方式在buffer中查找NAME字段
@@ -196,11 +207,14 @@ int createName(const char *buf,int bufPos,char Name[],int *namePos){
     while(buf[bufPos]!=0){
         if((buf[bufPos] & 0xC0) == 0xC0){
             // 检测到报文跳转指针
-            bufPos++;
-            //bufPos = (unsigned char) buf[bufPos];
-            // 指向要跳转的位置
-            createName(buf,(unsigned char) buf[bufPos],Name,namePos);
 
+            char high = (0 | buf[bufPos] & 0x3F) << 8;
+            bufPos++;
+
+            // 指向要跳转的位置
+            unsigned short offset = char2Short(high,buf[bufPos]);
+            //createName(buf,(unsigned char) buf[bufPos],Name,namePos);
+            createName(buf,offset,Name,namePos);
             return bufPos;
         }
 
@@ -215,8 +229,64 @@ int createName(const char *buf,int bufPos,char Name[],int *namePos){
         Name[*namePos+letterLength] = '.';
         *namePos += letterLength + 1;
     }
-    return bufPos;
+    return bufPos; // 这里不需要减1，因为这里的bufPos自然停在最后的0x00
 }
+
+
+int createRData(const char *buf,int bufPos,char RData[],int *RDataPos,int type,int length) {
+
+    switch (type) {
+        case 1:
+            // A
+            return createRDataAddress(buf,bufPos,RData,RDataPos,4,length);
+        case 5:
+            // CNAME
+            return createName(buf,bufPos,RData,RDataPos);
+        case 28:
+            // AAAA
+            return createRDataAddress(buf,bufPos,RData,RDataPos,6,length);
+        default:
+            // 其他类型直接返回到达这个RData末尾的下标
+            return bufPos + length - 1;
+    }
+}
+
+
+int createRDataAddress(const char *buf,int bufPos,char RData[],int *RDataPos,int type,int length){
+
+    int currentLength = 0;
+    while(currentLength < length){
+
+        int letterLength = length;
+
+        /*bufPos++;
+        currentLength++;*/
+
+        for(int letterNum = 0;letterNum < letterLength; letterNum++) {
+            RData[*RDataPos+letterNum] = buf[bufPos];
+            bufPos++;
+            currentLength++;
+        }
+
+        /*switch (type) {
+            case 4:
+                // ipv4地址分隔符.
+                RData[*RDataPos+letterLength] = '.';
+                break;
+            case 6:
+                // ipv6地址分隔符:
+                RData[*RDataPos+letterLength] = ':';
+                break;
+            default:
+                RData[*RDataPos+letterLength] = '.';
+        }*/
+
+        *RDataPos += letterLength + 1;
+    }
+    return bufPos - 1;
+    // 要减一否则这里的bufPos会因为上面的for多1
+}
+
 
 
 /**
@@ -335,6 +405,47 @@ void printMessage(message_t *message){
                 }
                 printf(labelNum == (sizeof *(message->answers[responseNum].name))/(sizeof (string_t))-1?"":".");
             }
+            printf("\n");
+
+            printf("TYPE: %hu\n",message->answers[responseNum].type);
+            printf("CLASS: %hu\n",message->answers[responseNum].class);
+            printf("TTL: %d\n",message->answers[responseNum].ttl);
+            printf("RDLENGTH: %hu\n",message->answers[responseNum].response_data_length);
+
+            printf("RData: ");
+            switch (message->answers[responseNum].type) {
+                case 1:
+                    // A
+                    for(int labelNum = 0;labelNum < (sizeof *(message->answers[responseNum].response_data))/(sizeof (string_t)); labelNum++){
+                        for(int letterNum = 0;letterNum < message->answers[responseNum].response_data[labelNum].length;letterNum++){
+                            printf("%d",(unsigned char)message->answers[responseNum].response_data[labelNum].value[letterNum]);
+                            printf(letterNum == message->answers[responseNum].response_data[labelNum].length - 1 ?"" :".");
+                        }
+                    }
+                    break;
+                case 5:
+                    // CNAME
+                    for(int labelNum = 0;labelNum < (sizeof *(message->answers[responseNum].response_data))/(sizeof (string_t)); labelNum++){
+                        for(int letterNum = 0;letterNum < message->answers[responseNum].response_data[labelNum].length;letterNum++){
+                            printf("%c",message->answers[responseNum].response_data[labelNum].value[letterNum]);
+                        }
+                        printf(labelNum == (sizeof *(message->answers[responseNum].response_data))/(sizeof (string_t))-1?"":".");
+                    }
+                    break;
+                case 28:
+                    // AAAA
+                        for(int letterNum = 0;letterNum < message->answers[responseNum].response_data->length;letterNum++){
+                            printf("%02x",(unsigned char)message->answers[responseNum].response_data->value[letterNum]);
+                            if(letterNum % 2 != 0){
+                                printf((letterNum == message->answers[responseNum].response_data->length-1) ? "" : ":");
+                            }
+
+                        }
+                    break;
+                default:
+                    printf("Not analyzed");
+            }
+
             printf("\n");
         }
     }
