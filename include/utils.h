@@ -25,13 +25,20 @@ unsigned int string2inet4address(string_t *address);
  * @param address IPv6地址
  * @return 地址字符串
  */
-string_t *inet6address2string(unsigned long long address);
+string_t *inet6address2string(const unsigned char * address);
 
 /**
  * 将地址字符串转换为IPv6地址
  * @param address 地址字符串
  * @return IPv6地址
  */
-unsigned long long string2inet6address(string_t *address);
+unsigned char *string2inet6address(string_t *address);
 
+/**
+ * 两个char合成一个unsigned short
+ * @param high 合成的高位
+ * @param low 合成的低位
+ * @return 合成结果
+ */
+unsigned short char2Short(char high, char low);
 #endif //POST_DNS_UTILS_H
