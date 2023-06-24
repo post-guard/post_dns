@@ -13,7 +13,7 @@ typedef struct {
     short class;
     int ttl;
     unsigned short response_data_length;
-    string_t *response_data;
+    void *response_data;
 } resource_record_t;
 
 typedef struct {
