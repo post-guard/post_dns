@@ -4,7 +4,7 @@
 
 #ifndef POST_DNS_STRING_T_H
 #define POST_DNS_STRING_T_H
-#include "boolean.h"
+#include "defines.h"
 
 /**
  * 字符串结构体
