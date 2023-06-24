@@ -6,6 +6,7 @@
 #include "stdlib.h"
 #include "string.h"
 #include "logging.h"
+#include "utils.h"
 
 /**
  * 采用递归方式在buffer中查找NAME字段
@@ -62,7 +63,7 @@ void char2bit(char ch, char *bit);
 /**
  *  将两个char拼接成一个short
  */
-short char2Short(char high, char low);
+//short char2Short(char high, char low);
 
 uv_buf_t *message2buf(message_t *message)
 {
@@ -235,21 +236,46 @@ void buf2messageRR(const char *buf, message_t *message, const int *endPos, enum 
                              resourceRecord[entryNum].response_data_length);
         bufPos++;
 
+        string_t *RDataResult = (string_t *) malloc(sizeof(string_t));
+
         //只有对A、CNAME、AAAA有处理，其余类型都直接跳过
         switch (resourceRecord[entryNum].type)
         {
             case 1:
-            case 5:
-            case 28:
+                // A
                 RData[RDataPos - 1] = '\0';
-                //char RDataResult[RDataPos];
-                string_t *RDataResult = (string_t *) malloc(sizeof(string_t));
+
+                RDataResult->value = (char *) malloc(sizeof(char) * (RDataPos - 1));
+                // 去除最后的\0，实际上只有四个字节
+                RDataResult->length = RDataPos - 1;
+                memcpy(RDataResult->value, RData, RDataPos - 1);
+
+                unsigned int *RDataResultInt = (unsigned int *)malloc(sizeof(unsigned int));
+                *RDataResultInt = string2inet4address(RDataResult);
+                resourceRecord[entryNum].response_data = (unsigned int *) RDataResultInt;
+                break;
+            case 5:
+                // CNAME
+                RData[RDataPos - 1] = '\0';
 
                 RDataResult->value = (char *) malloc(sizeof(char) * RDataPos);
                 RDataResult->length = RDataPos - 1;
-                // 注意这个length不包括末尾的\0
-                memcpy(RDataResult->value, RData, RDataPos);
+                // 这个字符串复制后末尾是不要带\0的，所以实际的复制size就是RDataPos - 1
+
+                memcpy(RDataResult->value, RData, RDataPos - 1);
+                // 这个字符串复制后末尾是不要带\0的，所以实际的复制size就是RDataPos - 1
                 resourceRecord[entryNum].response_data = RDataResult;
+                break;
+            case 28:
+                // AAAA
+                RData[RDataPos - 1] = '\0';
+
+                RDataResult->value = (char *) malloc(sizeof(char) * (RDataPos - 1));
+                RDataResult->length = RDataPos - 1;
+                // 注意这个length不包括末尾的\0,为16
+                memcpy(RDataResult->value, RData, RDataPos - 1);
+
+                resourceRecord[entryNum].response_data = string2inet6address(RDataResult);
                 break;
         }
     }
@@ -341,10 +367,10 @@ void char2bit(char ch, char *bit)
     }
 }
 
-short char2Short(char high, char low)
+/*short char2Short(char high, char low)
 {
     return ((0 | high) << 8) | (low & 0xFF);
-}
+}*/
 
 /**
  * 打印DNS message报文内容
@@ -492,22 +518,22 @@ void printMessage(message_t *message)
             {
                 case 1:
                     // A
-                    for (int labelNum = 0; labelNum < (sizeof *(message->answers[responseNum].response_data)) /
+                    /*for (int labelNum = 0; labelNum < (sizeof *(message->answers[responseNum].response_data)) /
                                                       (sizeof(string_t)); labelNum++)
-                    {
-                        for (int letterNum = 0;
-                             letterNum < message->answers[responseNum].response_data[labelNum].length; letterNum++)
+                    {*/
+                        /*for (int letterNum = 0;
+                             letterNum < message->answers[responseNum].response_data.length; letterNum++)
                         {
                             log_debug("%d",
-                                   (unsigned char) message->answers[responseNum].response_data[labelNum].value[letterNum]);
-                            log_debug(letterNum == message->answers[responseNum].response_data[labelNum].length - 1 ? ""
+                                   (unsigned char) message->answers[responseNum].response_data.value[letterNum]);
+                            log_debug(letterNum == message->answers[responseNum].response_data.length - 1 ? ""
                                                                                                                  : ".");
-                        }
-                    }
+                        }*/
+                    //}
                     break;
                 case 5:
                     // CNAME
-                    for (int labelNum = 0; labelNum < (sizeof *(message->answers[responseNum].response_data)) /
+                    /*for (int labelNum = 0; labelNum < (sizeof *(message->answers[responseNum].response_data)) /
                                                       (sizeof(string_t)); labelNum++)
                     {
                         for (int letterNum = 0;
@@ -518,11 +544,11 @@ void printMessage(message_t *message)
                         log_debug(labelNum ==
                                (sizeof *(message->answers[responseNum].response_data)) / (sizeof(string_t)) - 1 ? ""
                                                                                                                 : ".");
-                    }
+                    }*/
                     break;
                 case 28:
                     // AAAA
-                    for (int letterNum = 0;
+                    /*for (int letterNum = 0;
                          letterNum < message->answers[responseNum].response_data->length; letterNum++)
                     {
                         log_debug("%02x", (unsigned char) message->answers[responseNum].response_data->value[letterNum]);
@@ -531,7 +557,7 @@ void printMessage(message_t *message)
                             log_debug((letterNum == message->answers[responseNum].response_data->length - 1) ? "" : ":");
                         }
 
-                    }
+                    }*/
                     break;
                 default:
                     log_debug("Not analyzed");
