@@ -21,6 +21,9 @@ static void udp_on_send(uv_udp_send_t *req, int status)
     {
         log_error("Send Error");
     }
+
+    free(req->bufs);
+    free(req);
 }
 
 static void udp_on_read(

@@ -18,11 +18,12 @@ typedef enum {
 
 extern logging_level_t logging_level;
 
-void logging_printf(logging_level_t level, const char *str, const char * filename, int line);
+void __attribute__((format(printf, 4, 5)))
+logging_printf(logging_level_t level, const char * filename, int line, const char *fmt, ...);
 
-#define log_debug(str) logging_printf(logging_debug_level, str, __FILE_NAME__, __LINE__)
-#define log_information(str) logging_printf(logging_information_level, str, __FILE_NAME__, __LINE__)
-#define log_warning(str) logging_printf(logging_warning_level, str, __FILE_NAME__, __LINE__)
-#define log_error(str) logging_printf(logging_error_level, str, __FILE_NAME__, __LINE__)
+#define log_debug(fmt, ...) logging_printf(logging_debug_level, __FILE_NAME__, __LINE__, fmt, ##__VA_ARGS__)
+#define log_information(fmt, ...) logging_printf(logging_information_level, __FILE_NAME__, __LINE__, fmt, ##__VA_ARGS__)
+#define log_warning(fmt, ...) logging_printf(logging_warning_level, __FILE_NAME__, __LINE__, fmt, ##__VA_ARGS__)
+#define log_error(fmt, ...) logging_printf(logging_error_level, __FILE_NAME__, __LINE__, fmt, ##__VA_ARGS__)
 
 #endif //POST_DNS_LOGGING_H
