@@ -2,8 +2,11 @@
 // Created by ricardo on 23-6-24.
 //
 #include "hash_table.h"
+
 #include <stdlib.h>
 #include <limits.h>
+#include <string.h>
+#include "logging.h"
 #include "defines.h"
 
 hash_table_t *hash_table_new()
@@ -15,6 +18,7 @@ hash_table_t *hash_table_new()
     table->threshold = table->capacity * LOAD_FACTOR;
     table->lock = malloc(sizeof(uv_rwlock_t));
     table->table = malloc(sizeof(hash_node_t) * 8);
+    memset(table->table, 0, sizeof(hash_node_t) * 8);
 
     uv_rwlock_init(table->lock);
 
@@ -76,13 +80,15 @@ static void resize(hash_table_t *table)
 
     for (int i = 0; i < oldCapacity; i++)
     {
-        hash_node_t node = oldTable[i];
+        hash_node_t *node = &oldTable[i];
 
-        while (node.name != NULL)
+        // 这里的判断条件有点奇怪
+        // 因为在表中的数据是不可能为NULL的
+        while (node != NULL and node->name != NULL)
         {
-            add_node(table, node.name, node.data);
+            add_node(table, node->name, node->data);
 
-            node = *node.next;
+            node = node->next;
         }
 
         // 释放链接中节点占用的内存
@@ -101,16 +107,17 @@ static void resize(hash_table_t *table)
 
 void hash_table_put(hash_table_t *table, string_t *name, void *data)
 {
-    uv_rwlock_wrlock(table->lock);
     if (name == NULL or data == NULL)
     {
         return;
     }
+    uv_rwlock_wrlock(table->lock);
+    log_information("哈希表上锁");
 
     int index = (string_t_hash_code(name) & INT_MAX) % table->capacity;
     hash_node_t *node = &table->table[index];
 
-    while (node->name != NULL)
+    while (node != NULL and node->name != NULL)
     {
         if (string_t_equal(node->name, name))
         {
@@ -119,19 +126,24 @@ void hash_table_put(hash_table_t *table, string_t *name, void *data)
             void *oldData = node->data;
             node->data = data;
             free(oldData);
+            uv_rwlock_wrunlock(table->lock);
+            log_information("哈希表解锁");
             return;
         }
+
+        node = node->next;
     }
 
     // 哈希表中没有该节点
     add_node(table, name, data);
 
-    if (table->count < table->threshold)
+    if (table->count > table->threshold)
     {
         resize(table);
     }
 
     uv_rwlock_wrunlock(table->lock);
+    log_information("哈希表解锁");
 }
 
 void *hash_table_get(hash_table_t *table, string_t *name)
@@ -167,6 +179,7 @@ void hash_table_remove(hash_table_t *table, string_t *name)
     {
         if (string_t_equal(node->name, name))
         {
+            uv_rwlock_wrlock(table->lock);
             if (last_node == NULL)
             {
                 // 删除头结点上的数据
@@ -178,20 +191,25 @@ void hash_table_remove(hash_table_t *table, string_t *name)
                     node->name = NULL;
                     node->data = NULL;
                 }
-
-                // 含有下一个节点
-                node->name = node->next->name;
-                node->data = node->next->data;
-                node->next = node->next->next;
-                free(node->next);
+                else
+                {
+                    // 含有下一个节点
+                    node->name = node->next->name;
+                    node->data = node->next->data;
+                    node->next = node->next->next;
+                    free(node->next);
+                }
+            }
+            else
+            {
+                // 不是头结点上的数据
+                last_node->next = node->next;
+                string_t_free(node->name);
+                free(node->data);
+                free(node);
             }
 
-            // 不是头结点上的数据
-            last_node->next = node->next;
-            string_t_free(node->name);
-            free(node->data);
-            free(node);
-
+            uv_rwlock_wrunlock(table->lock);
             return;
         }
 
