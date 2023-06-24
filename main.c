@@ -21,9 +21,6 @@ static void udp_on_send(uv_udp_send_t *req, int status)
     {
         log_error("Send Error");
     }
-
-    free(req->bufs);
-    free(req);
 }
 
 static void udp_on_read(
@@ -42,11 +39,10 @@ static void udp_on_read(
     uv_ip4_name((struct sockaddr_in *)address, sender, 16);
     printf("Receive data from %s\n", sender);
     printf("Data length: %zu\n", number);
-    printf("Data: ");
+    log_information("Data: %s", bytes2hex(buf->base, number));
 
     buf->base[number] = '\0';
     // 修改buffer末尾加入一个字符串结束标志
-    printfUnsignedStr(buf->base,number);
 
     printf("\n");
     buf2message(buf);
@@ -72,10 +68,6 @@ static void query_on_read(
     {
         return;
     }
-
-    log_information("Receiving data from upstream: ");
-    printfUnsignedStr(buf->base, number);
-    printf("\n");
 
     log_information("开始分析数据:");
     buf->base[number] = '\0';

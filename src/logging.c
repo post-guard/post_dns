@@ -3,6 +3,7 @@
 //
 #include "logging.h"
 #include "stdio.h"
+#include "stdlib.h"
 #include "stdarg.h"
 
 logging_level_t logging_level = logging_information_level;
@@ -36,6 +37,23 @@ void logging_printf(logging_level_t level, const char * filename, int line, cons
 
         printf("[%s] %s:%d: %s\n", head, filename, line, buf);
     }
+}
+
+char *bytes2hex(const char *data, int length)
+{
+    const unsigned char *value = (const unsigned char *)data;
+    char *result = malloc(sizeof(char ) * (2 * length + 1));
+    result[2 * length] = '\0';
+
+    for(int i = 0; i < length; i++)
+    {
+        char buf[3];
+        snprintf(buf, 3, "%.2x", value[i]);
+        result[2 * i] = buf[0];
+        result[2 * i + 1] = buf[1];
+    }
+
+    return result;
 }
 
 

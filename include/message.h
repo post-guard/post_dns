@@ -4,8 +4,11 @@
 
 #ifndef POST_DNS_MESSAGE_H
 #define POST_DNS_MESSAGE_H
+
 #include "resource_record.h"
-typedef struct {
+
+typedef struct
+{
     char QR;
     char Opcode;
     char AA;
@@ -16,7 +19,8 @@ typedef struct {
     char RCODE;
 } flags_t;
 
-typedef struct {
+typedef struct
+{
     short id;
     flags_t flags;
     unsigned short query_count;
@@ -29,23 +33,15 @@ typedef struct {
     resource_record_t *additional;
 } message_t;
 
-enum RR_TYPE{
-    Header,Question,Answer,Authority,Additional
+enum RR_TYPE
+{
+    Header, Question, Answer, Authority, Additional
 };
 
 uv_buf_t *message2buf(message_t *message);
 
 message_t *buf2message(const uv_buf_t *buf);
 
-message_t *buf2messageHeader(const uv_buf_t *buf,message_t *message);
-message_t *buf2messageQuestion(const char *buf,message_t *message,int *endPos);
-message_t *buf2messageRR(const char *buf,message_t *message,int *endPos,enum RR_TYPE type);
-
 void printMessage(message_t *message);
 
-void char2bit(char ch,char *bit);
-
-void printfUnsignedStr(const char *base,int length);
-
-short char2Short(char high,char low);
 #endif //POST_DNS_MESSAGE_H
