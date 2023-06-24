@@ -44,4 +44,11 @@ message_t *buf2message(const uv_buf_t *buf);
 
 void printMessage(message_t *message);
 
+/**
+ * 使用一个dns消息中的id和queries部分作为一个特征向量标记一个请求
+ * @param message dns消息
+ * @return 该dns消息的特征向量
+ */
+string_t *message2feature_string(message_t *message);
+
 #endif //POST_DNS_MESSAGE_H

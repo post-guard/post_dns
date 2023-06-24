@@ -567,3 +567,32 @@ void printMessage(message_t *message)
         }
     }
 }
+
+string_t *message2feature_string(message_t *message)
+{
+    string_t *result = malloc(sizeof(string_t));
+    // id的长度
+    result->length = 2;
+
+    for (int i = 0; i < message->query_count; i++)
+    {
+        // 加上的4是TYPE和CLASS的4个字节
+        result->length = result->length + message->queries[i].name->length + 4;
+    }
+
+    result->value = malloc(sizeof(char) * result->length);
+
+    int pos = 0;
+    for (int i = 0; i < message->query_count; i++)
+    {
+        memcpy(&result->value[pos], message->queries[i].name->value,
+               sizeof(char) * message->queries[i].name->length);
+        pos = pos + sizeof(char) * message->queries[i].name->length;
+        memcpy(&result->value[pos], &message->queries[i].class, 2);
+        pos = pos + 2;
+        memcpy(&result->value[pos], &message->queries[i].type, 2);
+        pos = pos + 2;
+    }
+    memcpy(&result->value[pos], &message->id, 2);
+    return result;
+}
