@@ -69,6 +69,14 @@ void message2bufHeader(char *buf, message_t *message, int *endPos);
  */
 void message2bufQuestion(char *buf, message_t *message, int *endPos);
 
+/**
+ * 封装报文Answer段
+ * @param buf 生成的buffer
+ * @param message 封装信息
+ * @param endPos 这个函数执行完毕后，buf的长度
+ */
+void message2bufAnswer(char *buf, message_t *message, int *endPos);
+
 
 /**
  * 将传入的char中的每一位分离到str数组中
@@ -97,7 +105,12 @@ uv_buf_t *message2buf(message_t *message)
 
     message2bufQuestion(&buf->base[endPos], message, &endPos);
 
+    if(message->answer_count > 0) {
+        message2bufAnswer(&buf->base[endPos], message, &endPos);
+    }
+    buf->len = endPos;
     log_information("Create: %s", bytes2hex(buf->base, 60));
+    return buf;
 }
 
 message_t *buf2message(const uv_buf_t *buf)
@@ -758,4 +771,73 @@ void message2bufQuestion(char *buf, message_t *message, int *endPos){
 
         *endPos += bufPos + 2;
     }
+}
+
+
+void message2bufAnswer(char *buf, message_t *message, int *endPos){
+
+    int bufPos = 0;
+
+    for(int entryNum = 0; entryNum < message->answer_count;entryNum++) {
+        // NAME
+        char NAME[message->answers[entryNum].name->length + 2];
+        char * transfer = name2message(message->answers[entryNum].name->value);
+        memcpy(NAME, transfer, message->answers[entryNum].name->length + 2);
+        free(transfer);
+
+        memcpy(&buf[bufPos], NAME , message->answers[entryNum].name->length + 2);
+
+
+
+        // TYPE
+        bufPos += message->answers[entryNum].name->length + 2;
+        memcpy(&buf[bufPos], &(message->answers[entryNum].type) , sizeof(short));
+        swap16(&buf[bufPos]);
+
+        // CLASS
+        bufPos += 2;
+        memcpy(&buf[bufPos], &(message->answers[entryNum].class) , sizeof(short));
+        swap16(&buf[bufPos]);
+
+        // TTL
+        bufPos += 2;
+        memcpy(&buf[bufPos], &(message->answers[entryNum].ttl) , sizeof(int));
+        swap32(&buf[bufPos]);
+
+        // RDLENGTH
+        bufPos += 4;
+        memcpy(&buf[bufPos], &(message->answers[entryNum].response_data_length) , sizeof(short));
+        swap16(&buf[bufPos]);
+
+        // RDATA
+        bufPos += 2;
+
+        switch (message->answers[entryNum].type) {
+            case 1:
+                // A
+                memcpy(&buf[bufPos], &(message->answers[entryNum].response_data) , sizeof(int));
+                swap32(&buf[bufPos]);
+                break;
+            case 5:
+                // CNAME
+                {
+                    string_t *data = (string_t *) message->answers[entryNum].response_data;
+                    char CNAME[data->length + 2];
+                    char *transferCNAME = name2message(data->value);
+                    memcpy(CNAME, transferCNAME, data->length + 2);
+                    free(transferCNAME);
+
+                    memcpy(&buf[bufPos], CNAME, data->length + 2);
+                    break;
+                }
+            case 28:
+                // AAAA
+                memcpy(&buf[bufPos], &(message->answers[entryNum].response_data) , 16 * sizeof(char));
+                break;
+        }
+
+        bufPos += message->answers->response_data_length;
+    }
+    *endPos += bufPos;
+    // 最后会停在bufPos的最后一位的下一位
 }

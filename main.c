@@ -74,8 +74,14 @@ static void query_on_read(
     }
 
     log_information("开始分析数据:");
-    buf->base[number] = '\0';
-    buf2message(buf);
+
+    uv_buf_t receiv_buf = {
+            .base = buf->base,
+            .len = number
+    };
+    log_information("Data: %s", bytes2hex(buf->base, number));
+    message_t *message = buf2message(&receiv_buf);
+    message2buf(message);
     printf("\n");
 
 }
