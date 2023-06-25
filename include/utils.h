@@ -41,4 +41,22 @@ unsigned char *string2inet6address(string_t *address);
  * @return 合成结果
  */
 unsigned short char2Short(char high, char low);
+
+/**
+ * 大小端转换函数(short)
+ * @param p 起始地址
+ */
+void swap16(void * p);
+
+/**
+ * 大小端转换函数(int)
+ * @param p 起始地址
+ */
+void swap32(void * p);
+
+/**
+ * 大小端转换函数(longlong)
+ * @param p 起始地址
+ */
+void swap64(void * p);
 #endif //POST_DNS_UTILS_H

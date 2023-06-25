@@ -85,3 +85,35 @@ unsigned char * string2inet6address(string_t *address) {
     }
     return result;
 }
+
+
+
+void swap16(void * p)
+{
+    unsigned short *ptr=p;
+    unsigned short x = *ptr;
+    x = (x << 8) | (x >> 8);
+
+    *ptr=x;
+}
+
+void swap32(void * p)
+{
+    unsigned int *ptr=p;
+    unsigned int x = *ptr;
+    x = (x << 16) | (x >> 16);
+    x = ((x & 0x00FF00FF) << 8) | ((x >> 8) & 0x00FF00FF);
+
+    *ptr=x;
+}
+
+void swap64(void * p)
+{
+    unsigned long long *ptr=p;
+    unsigned long long x = *ptr;
+    x = (x << 32) | (x >> 32);
+    x = ((x & 0x0000FFFF0000FFFF) << 16) | ((x >> 16) & 0x0000FFFF0000FFFF);
+    x = ((x & 0x00FF00FF00FF00FF) << 8) | ((x >> 8) & 0x00FF00FF00FF00FF);
+
+    *ptr=x;
+}
