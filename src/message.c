@@ -141,6 +141,95 @@ message_t *buf2message(const uv_buf_t *buf)
     return message;
 }
 
+void message_log(message_t *message)
+{
+    log_information("打印DNS包中的信息：");
+
+    for (int i = 0; i < message->query_count; i++)
+    {
+        char *query_domain = string_t_print(message->queries[i].name);
+        log_information("DNS查询域名：%s", query_domain);
+        free(query_domain);
+    }
+
+    for (int i = 0; i < message->answer_count; i++)
+    {
+        switch (message->answers[i].type)
+        {
+            case 1:
+            {
+                // A
+                char *domain_name = string_t_print(message->answers[i].name);
+                char *ipv4_address = string_t_print(
+                        inet4address2string(*(int *)message->answers[i].response_data)
+                        );
+                log_information("域名%s A记录回答：%s", domain_name, ipv4_address);
+                free(domain_name);
+                free(ipv4_address);
+                break;
+            }
+            case 5:
+            {
+                // CNAME
+                char *domain_name = string_t_print(message->answers[i].name);
+                char *answer_name = string_t_print((string_t*)message->answers[i].response_data);
+                log_information("域名%s CNAME记录回答%s", domain_name, answer_name);
+                free(domain_name);
+                free(answer_name);
+                break;
+            }
+            case 28:
+            {
+                // AAAA
+                char *domain_name = string_t_print(message->answers[i].name);
+                char *ipv6_address = string_t_print(
+                        inet6address2string((const unsigned char*)message->answers[i].response_data)
+                        );
+                log_information("域名%s A记录回答：%s", domain_name, ipv6_address);
+                free(domain_name);
+                free(ipv6_address);
+                break;
+            }
+            default:
+                break;
+        }
+    }
+}
+
+void message_free(message_t *message)
+{
+    for (int i = 0; i < message->query_count; i++)
+    {
+        string_t_free(message->queries[i].name);
+    }
+    free(message->queries);
+
+    for (int i = 0; i < message->answer_count; i++)
+    {
+        switch (message->answers[i].type)
+        {
+            case 1:
+                // A
+                free(message->answers[i].response_data);
+                string_t_free(message->answers[i].name);
+                break;
+            case 5:
+            case 28:
+                // AAAA 和 CNAME
+                string_t_free(message->answers[i].response_data);
+                string_t_free(message->answers[i].name);
+                break;
+            default:
+                break;
+        }
+    }
+    free(message->answers);
+
+    free(message->authorities);
+    free(message->additional);
+    free(message);
+}
+
 
 void buf2messageHeader(const uv_buf_t *buf, message_t *message)
 {

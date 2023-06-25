@@ -51,4 +51,8 @@ void printMessage(message_t *message);
  */
 string_t *message2feature_string(message_t *message);
 
+void message_log(message_t *message);
+
+void message_free(message_t *message);
+
 #endif //POST_DNS_MESSAGE_H
