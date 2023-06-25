@@ -2,8 +2,9 @@
 // Created by ricardo on 23-6-24.
 //
 #include <stdio.h>
+#include <stdlib.h>
 #include "utils.h"
-#include "stdlib.h"
+#include "logging.h"
 
 unsigned short char2Short(char high, char low)
 {
@@ -84,4 +85,18 @@ unsigned char * string2inet6address(string_t *address) {
         result[i] = address->value[i];
     }
     return result;
+}
+
+void udp_alloc_buffer(uv_handle_t *handle, size_t suggest_size, uv_buf_t *buf)
+{
+    buf->base = malloc(suggest_size);
+    buf->len = suggest_size;
+}
+
+void udp_on_send(uv_udp_send_t *req, int status)
+{
+    if (status)
+    {
+        log_error("发送UDP数据出错: %d", status);
+    }
 }

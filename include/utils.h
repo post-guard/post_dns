@@ -5,6 +5,7 @@
 #ifndef POST_DNS_UTILS_H
 #define POST_DNS_UTILS_H
 #include "string_t.h"
+#include "uv.h"
 
 /**
  * 将IPv4地址转换为字符串
@@ -41,4 +42,14 @@ unsigned char *string2inet6address(string_t *address);
  * @return 合成结果
  */
 unsigned short char2Short(char high, char low);
+
+/**
+ * UDP分配临时空间辅助函数
+ */
+void udp_alloc_buffer(uv_handle_t *handle, size_t suggest_size, uv_buf_t *buf);
+
+/**
+ * UDP发送回调函数
+ */
+void udp_on_send(uv_udp_send_t *req, int status);
 #endif //POST_DNS_UTILS_H
