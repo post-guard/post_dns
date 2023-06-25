@@ -80,8 +80,8 @@ string_t *inet6address2string(const unsigned char * address){
 
 unsigned char * string2inet6address(string_t *address) {
 
-    unsigned char * result = (unsigned char *)malloc(128 * sizeof(unsigned char));
-    for(int i = 0 ; i < 128 ; i++) {
+    unsigned char * result = (unsigned char *)malloc(16 * sizeof(unsigned char));
+    for(int i = 0 ; i < 16 ; i++) {
         result[i] = address->value[i];
     }
     return result;

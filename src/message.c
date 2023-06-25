@@ -97,7 +97,7 @@ char *name2message(const char *domain_name);
 uv_buf_t *message2buf(message_t *message)
 {
     uv_buf_t *buf = (uv_buf_t *) malloc(sizeof(uv_buf_t));
-    buf->base = (char *) malloc(600 * sizeof(char));
+    buf->base = (char *) malloc(1500 * sizeof(char));
     int endPos = 0;
 
     message2bufHeader(&buf->base[endPos], message, &endPos);
@@ -110,7 +110,7 @@ uv_buf_t *message2buf(message_t *message)
         message2bufAnswer(&buf->base[endPos], message, &endPos);
     }
     buf->len = endPos;
-    log_information("Create: %s", bytes2hex(buf->base, 60));
+    log_information("Create: %s", bytes2hex(buf->base, 120));
     return buf;
 }
 
@@ -395,8 +395,8 @@ void buf2messageRR(const char *buf, message_t *message, const int *endPos, enum 
                 RDataResult->length = RDataPos - 1;
                 // 这个字符串复制后末尾是不要带\0的，所以实际的复制size就是RDataPos - 1
 
-                memcpy(RDataResult->value, RData, RDataPos - 1);
-                // 这个字符串复制后末尾是不要带\0的，所以实际的复制size就是RDataPos - 1
+                memcpy(RDataResult->value, RData, RDataPos);
+                // 这个字符串复制后末尾是不要带\0的，所以实际的复制size就是RDataPos - 1 当我没说，，
                 resourceRecord[entryNum].response_data = RDataResult;
                 break;
             case 28:
@@ -939,8 +939,9 @@ void message2bufAnswer(char *buf, message_t *message, int *endPos)
         {
             case 1:
                 // A
-                memcpy(&buf[bufPos], &(message->answers[entryNum].response_data), sizeof(int));
+                memcpy(&buf[bufPos], message->answers[entryNum].response_data, sizeof(int));
                 swap32(&buf[bufPos]);
+                bufPos += message->answers[entryNum].response_data_length;
                 break;
             case 5:
                 // CNAME
@@ -952,15 +953,17 @@ void message2bufAnswer(char *buf, message_t *message, int *endPos)
                 free(transferCNAME);
 
                 memcpy(&buf[bufPos], CNAME, data->length + 2);
+                bufPos += data->length + 2;
                 break;
             }
             case 28:
                 // AAAA
-                memcpy(&buf[bufPos], &(message->answers[entryNum].response_data), 16 * sizeof(char));
+                memcpy(&buf[bufPos], message->answers[entryNum].response_data, 16);
+                bufPos += message->answers[entryNum].response_data_length;
                 break;
         }
 
-        bufPos += message->answers->response_data_length;
+
     }
     *endPos += bufPos;
     // 最后会停在bufPos的最后一位的下一位

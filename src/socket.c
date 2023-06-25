@@ -143,7 +143,7 @@ static void query_socket_read(
 
     // 发送DNS回复包
     send_response(message);
-    message_free(message);
+    //message_free(message);
 }
 
 static void bind_socket_read(
@@ -176,5 +176,5 @@ static void bind_socket_read(
 
     log_information("递归上游服务器");
     send_query(message);
-    message_free(message);
+    //message_free(message);
 }
