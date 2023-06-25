@@ -41,11 +41,14 @@ static void udp_on_read(
     printf("Data length: %zu\n", number);
     log_information("Data: %s", bytes2hex(buf->base, number));
 
-    buf->base[number] = '\0';
-    // 修改buffer末尾加入一个字符串结束标志
+    uv_buf_t receiv_buf = {
+            .base = buf->base,
+            .len = number
+    };
+
 
     printf("\n");
-    buf2message(buf);
+    buf2message(&receiv_buf);
     printf("bye\n");
 
     log_information("查询上游DNS");

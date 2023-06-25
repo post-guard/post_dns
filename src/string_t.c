@@ -1,7 +1,6 @@
 //
 // Created by ricardo on 23-6-16.
 //
-#include <bits/stdint-uintn.h>
 #include "string_t.h"
 #include "stdlib.h"
 #include "stdio.h"
@@ -15,7 +14,7 @@
  * @param seed
  * @return
  */
-uint32_t murmur3_32(const uint8_t* key, size_t len, uint32_t seed);
+unsigned int murmur3_32(const unsigned char* key, size_t len, unsigned int seed);
 
 string_t *string_t_malloc(const char *value, int length)
 {
@@ -69,9 +68,9 @@ bool string_t_equal(const string_t *a, const string_t *b)
 
 int string_t_hash_code(const string_t *str)
 {
-    uint32_t seed = 0x54623413;
+    unsigned int seed = 0x54623413;
 
-    return murmur3_32((const uint8_t *)str->value, str->length, seed) & 0x7fffffff;
+    return murmur3_32((const unsigned char*)str->value, str->length, seed) & 0x7fffffff;
 }
 
 split_array_t *string_t_split(const string_t *str, char separator)
@@ -133,23 +132,23 @@ void string_t_print(const string_t *str)
     free(print);
 }
 
-static inline uint32_t murmur_32_scramble(uint32_t k) {
+static inline unsigned int murmur_32_scramble(unsigned int k) {
     k *= 0xcc9e2d51;
     k = (k << 15) | (k >> 17);
     k *= 0x1b873593;
     return k;
 }
 
-uint32_t murmur3_32(const uint8_t* key, size_t len, uint32_t seed)
+unsigned int murmur3_32(const unsigned char* key, size_t len, unsigned int seed)
 {
-	uint32_t h = seed;
-    uint32_t k;
+	unsigned int h = seed;
+    unsigned int k;
     /* Read in groups of 4. */
     for (size_t i = len >> 2; i; i--) {
         // Here is a source of differing results across endiannesses.
         // A swap here has no effects on hash properties though.
-        memcpy(&k, key, sizeof(uint32_t));
-        key += sizeof(uint32_t);
+        memcpy(&k, key, sizeof(unsigned int));
+        key += sizeof(unsigned int);
         h ^= murmur_32_scramble(k);
         h = (h << 13) | (h >> 19);
         h = h * 5 + 0xe6546b64;

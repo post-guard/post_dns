@@ -60,10 +60,6 @@ void buf2messageRR(const char *buf, message_t *message, const int *endPos, enum 
  */
 void char2bit(char ch, char *bit);
 
-/**
- *  将两个char拼接成一个short
- */
-//short char2Short(char high, char low);
 
 uv_buf_t *message2buf(message_t *message)
 {
@@ -85,12 +81,12 @@ message_t *buf2message(const uv_buf_t *buf)
     endPos = 12;
 
     // Question段
-    if (buf->base[endPos] != 0)
+    if (endPos < buf->len)
     {
         buf2messageQuestion(&buf->base[endPos], message, &endPos);
     }
     // Answer段
-    if (buf->base[endPos] != 0)
+    if (message->answer_count > 1)
     {
         buf2messageRR(buf->base, message, &endPos, Answer);
     }
