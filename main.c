@@ -48,7 +48,8 @@ static void udp_on_read(
 
 
     printf("\n");
-    buf2message(&receiv_buf);
+    message_t *message = buf2message(&receiv_buf);
+    message2buf(message);
     printf("bye\n");
 
     log_information("查询上游DNS");
