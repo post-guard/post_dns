@@ -25,7 +25,7 @@ typedef struct
     flags_t flags;
     unsigned short query_count;
     unsigned short answer_count;
-    unsigned short nameserver_count;
+    unsigned short authority_count;
     unsigned short additional_count;
     query_t *queries;
     resource_record_t *answers;

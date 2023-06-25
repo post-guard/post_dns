@@ -60,7 +60,10 @@ static void send_query(message_t *message)
 {
     uv_udp_send_t *send_handler = malloc(sizeof(uv_udp_send_t));
 
-
+    // 在rfc1035中Z必须为0
+    message->flags.Z = 0;
+    message->additional_count = 0;
+    message->authority_count = 0;
     uv_buf_t *buf = message2buf(message);
     query_socket.data = buf;
 

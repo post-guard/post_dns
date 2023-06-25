@@ -91,12 +91,12 @@ void char2bit(char ch, char *bit);
  * @warning 使用后记得free掉这个返回值
  * @return 一个DNS报文中的域名字符串
  */
-char* name2message(const char* domain_name);
+char *name2message(const char *domain_name);
 
 
 uv_buf_t *message2buf(message_t *message)
 {
-    uv_buf_t *buf = (uv_buf_t *) malloc(sizeof (uv_buf_t));
+    uv_buf_t *buf = (uv_buf_t *) malloc(sizeof(uv_buf_t));
     buf->base = (char *) malloc(600 * sizeof(char));
     int endPos = 0;
 
@@ -105,7 +105,8 @@ uv_buf_t *message2buf(message_t *message)
 
     message2bufQuestion(&buf->base[endPos], message, &endPos);
 
-    if(message->answer_count > 0) {
+    if (message->answer_count > 0)
+    {
         message2bufAnswer(&buf->base[endPos], message, &endPos);
     }
     buf->len = endPos;
@@ -161,8 +162,8 @@ void message_log(message_t *message)
                 // A
                 char *domain_name = string_t_print(message->answers[i].name);
                 char *ipv4_address = string_t_print(
-                        inet4address2string(*(int *)message->answers[i].response_data)
-                        );
+                        inet4address2string(*(int *) message->answers[i].response_data)
+                );
                 log_information("域名%s A记录回答：%s", domain_name, ipv4_address);
                 free(domain_name);
                 free(ipv4_address);
@@ -172,7 +173,7 @@ void message_log(message_t *message)
             {
                 // CNAME
                 char *domain_name = string_t_print(message->answers[i].name);
-                char *answer_name = string_t_print((string_t*)message->answers[i].response_data);
+                char *answer_name = string_t_print((string_t *) message->answers[i].response_data);
                 log_information("域名%s CNAME记录回答%s", domain_name, answer_name);
                 free(domain_name);
                 free(answer_name);
@@ -183,8 +184,8 @@ void message_log(message_t *message)
                 // AAAA
                 char *domain_name = string_t_print(message->answers[i].name);
                 char *ipv6_address = string_t_print(
-                        inet6address2string((const unsigned char*)message->answers[i].response_data)
-                        );
+                        inet6address2string((const unsigned char *) message->answers[i].response_data)
+                );
                 log_information("域名%s A记录回答：%s", domain_name, ipv6_address);
                 free(domain_name);
                 free(ipv6_address);
@@ -249,7 +250,7 @@ void buf2messageHeader(const uv_buf_t *buf, message_t *message)
 
     message->query_count = (unsigned short) (((0 | buf->base[4]) << 8) | (buf->base[5] & 0xFF));
     message->answer_count = (unsigned short) (((0 | buf->base[6]) << 8) | (buf->base[7] & 0xFF));
-    message->nameserver_count = (unsigned short) (((0 | buf->base[8]) << 8) | (buf->base[9] & 0xFF));
+    message->authority_count = (unsigned short) (((0 | buf->base[8]) << 8) | (buf->base[9] & 0xFF));
     message->additional_count = (unsigned short) (((0 | buf->base[10]) << 8) | (buf->base[11] & 0xFF));
 
     free(flags);
@@ -281,7 +282,7 @@ void buf2messageQuestion(const char *buf, message_t *message, int *endPos)
             QValue[QValuePos + letterLength] = '.';
             QValuePos += letterLength + 1;
         }
-        
+
         QValue[QValuePos - 1] = '\0';
         char QResult[QValuePos];
         message->queries[entryNum].name = string_t_malloc(strcpy(QResult, QValue), QValuePos - 1);
@@ -316,7 +317,7 @@ void buf2messageRR(const char *buf, message_t *message, const int *endPos, enum 
             message->answers = resourceRecord;
             break;
         case Authority:
-            resourceRecordCount = message->nameserver_count;
+            resourceRecordCount = message->authority_count;
             resourceRecord = (resource_record_t *) malloc(resourceRecordCount * sizeof(resource_record_t));
             message->authorities = resourceRecord;
             break;
@@ -382,7 +383,7 @@ void buf2messageRR(const char *buf, message_t *message, const int *endPos, enum 
                 RDataResult->length = RDataPos - 1;
                 memcpy(RDataResult->value, RData, RDataPos - 1);
 
-                unsigned int *RDataResultInt = (unsigned int *)malloc(sizeof(unsigned int));
+                unsigned int *RDataResultInt = (unsigned int *) malloc(sizeof(unsigned int));
                 *RDataResultInt = string2inet4address(RDataResult);
                 resourceRecord[entryNum].response_data = (unsigned int *) RDataResultInt;
                 break;
@@ -559,7 +560,7 @@ void printMessage(message_t *message)
     else
     {
         log_debug(message->flags.RA == 0 ? "Server is not support for recursive query\n"
-                                      : "Server is support for recursive query\n");
+                                         : "Server is support for recursive query\n");
     }
 
     log_debug("Z: %c  \n", message->flags.Z + 48);
@@ -598,7 +599,7 @@ void printMessage(message_t *message)
 
     log_debug("QDCOUNT: %hu\n", message->query_count);
     log_debug("ANCOUNT: %hu\n", message->answer_count);
-    log_debug("NSCOUNT: %hu\n", message->nameserver_count);
+    log_debug("NSCOUNT: %hu\n", message->authority_count);
     log_debug("ARCOUNT: %hu\n", message->additional_count);
 
     log_debug("[QUESTION]\n");
@@ -636,7 +637,8 @@ void printMessage(message_t *message)
                 {
                     log_debug("%c", message->answers[responseNum].name[labelNum].value[letterNum]);
                 }
-                log_debug(labelNum == (sizeof *(message->answers[responseNum].name)) / (sizeof(string_t)) - 1 ? "" : ".");
+                log_debug(
+                        labelNum == (sizeof *(message->answers[responseNum].name)) / (sizeof(string_t)) - 1 ? "" : ".");
             }
             log_debug("\n");
 
@@ -653,14 +655,14 @@ void printMessage(message_t *message)
                     /*for (int labelNum = 0; labelNum < (sizeof *(message->answers[responseNum].response_data)) /
                                                       (sizeof(string_t)); labelNum++)
                     {*/
-                        /*for (int letterNum = 0;
-                             letterNum < message->answers[responseNum].response_data.length; letterNum++)
-                        {
-                            log_debug("%d",
-                                   (unsigned char) message->answers[responseNum].response_data.value[letterNum]);
-                            log_debug(letterNum == message->answers[responseNum].response_data.length - 1 ? ""
-                                                                                                                 : ".");
-                        }*/
+                    /*for (int letterNum = 0;
+                         letterNum < message->answers[responseNum].response_data.length; letterNum++)
+                    {
+                        log_debug("%d",
+                               (unsigned char) message->answers[responseNum].response_data.value[letterNum]);
+                        log_debug(letterNum == message->answers[responseNum].response_data.length - 1 ? ""
+                                                                                                             : ".");
+                    }*/
                     //}
                     break;
                 case 5:
@@ -706,9 +708,11 @@ void printMessage(message_t *message)
  * @param bin 存放二进制各个位的数组
  * @param length 二进制数组的长度
  */
-void dec2bin(int dec,int * bin,int length){
+void dec2bin(int dec, int *bin, int length)
+{
     int pos = 0;
-    while(dec > 0) {
+    while (dec > 0)
+    {
         bin[pos] = dec % 2;
         dec = dec / 2;
         pos++;
@@ -718,9 +722,10 @@ void dec2bin(int dec,int * bin,int length){
 
     int temp = 0;
     int n = length;
-    for (int i = 0; i < n/2; ++i) {
-        temp = bin[n-i-1];
-        bin[n-i-1] = bin[i];
+    for (int i = 0; i < n / 2; ++i)
+    {
+        temp = bin[n - i - 1];
+        bin[n - i - 1] = bin[i];
         bin[i] = temp;
     }
 }
@@ -755,15 +760,17 @@ string_t *message2feature_string(message_t *message)
     return result;
 }
 
-char* name2message(const char* domain_name) {
-    char* output = (char*)malloc(strlen(domain_name) * 2 + 2);
-    char* current = output;
-    const char* token;
-    const char* delimiter = ".";
+char *name2message(const char *domain_name)
+{
+    char *output = (char *) malloc(strlen(domain_name) * 2 + 2);
+    char *current = output;
+    const char *token;
+    const char *delimiter = ".";
     int length;
-    char* temp_domain = strdup(domain_name);
+    char *temp_domain = strdup(domain_name);
 
-    while ((token = strtok(temp_domain, delimiter)) != NULL) {
+    while ((token = strtok(temp_domain, delimiter)) != NULL)
+    {
         length = strlen(token);
         sprintf(current, "%c%s", length, token);
         current += length + 1;
@@ -779,83 +786,87 @@ char* name2message(const char* domain_name) {
 }
 
 
-void message2bufHeader(char *buf, message_t *message, int *endPos){
+void message2bufHeader(char *buf, message_t *message, int *endPos)
+{
 
     int bufPos = 0;
 
     // id
-    memcpy(&buf[bufPos], &(message->id) , sizeof(short));
+    memcpy(&buf[bufPos], &(message->id), sizeof(short));
     swap16(&buf[bufPos]);
     // flags
-    bufPos+=2;
+    bufPos += 2;
 
-    char flags[2]={0,0};
+    char flags[2] = {0, 0};
     // QR Opcode AA TC RD
     int flagsOpcode[4] = {0};
-    dec2bin(message->flags.Opcode,flagsOpcode,4);
+    dec2bin(message->flags.Opcode, flagsOpcode, 4);
 
     int flagsBitA[8] = {message->flags.QR, flagsOpcode[0],
                         flagsOpcode[1], flagsOpcode[2],
                         flagsOpcode[3], message->flags.AA,
-                       message->flags.TC, message->flags.RD };
+                        message->flags.TC, message->flags.RD};
     // RA Z RCODE
     int flagsRCode[4] = {0};
-    dec2bin(message->flags.RCODE,flagsRCode,4);
+    dec2bin(message->flags.RCODE, flagsRCode, 4);
     int flagsBitB[8] = {message->flags.RA, message->flags.Z,
                         message->flags.Z, message->flags.Z,
                         flagsRCode[0], flagsRCode[1],
-                        flagsRCode[2], flagsRCode[3] };
+                        flagsRCode[2], flagsRCode[3]};
 
-    for(int i = 0; i < 8 ;i++) {
-        flags[0] |= ( flagsBitA[7 - i] << i );
-        flags[1] |= ( flagsBitB[7 - i] << i );
+    for (int i = 0; i < 8; i++)
+    {
+        flags[0] |= (flagsBitA[7 - i] << i);
+        flags[1] |= (flagsBitB[7 - i] << i);
     }
 
-    memcpy(&buf[bufPos], flags , 2 * sizeof(char));
+    memcpy(&buf[bufPos], flags, 2 * sizeof(char));
 
     // QDCOUNT
     bufPos += 2;
-    memcpy(&buf[bufPos], &(message->query_count) , sizeof(short));
+    memcpy(&buf[bufPos], &(message->query_count), sizeof(short));
     swap16(&buf[bufPos]);
     // ANCOUNT
     bufPos += 2;
-    memcpy(&buf[bufPos], &(message->answer_count) , sizeof(short));
+    memcpy(&buf[bufPos], &(message->answer_count), sizeof(short));
     swap16(&buf[bufPos]);
     // NSCOUNT
     bufPos += 2;
-    memcpy(&buf[bufPos], &(message->nameserver_count) , sizeof(short));
+    memcpy(&buf[bufPos], &(message->authority_count), sizeof(short));
     swap16(&buf[bufPos]);
     // ARCOUNT
     bufPos += 2;
-    memcpy(&buf[bufPos], &(message->additional_count) , sizeof(short));
+    memcpy(&buf[bufPos], &(message->additional_count), sizeof(short));
     swap16(&buf[bufPos]);
 
-    *endPos =  bufPos + 2;
+    *endPos = bufPos + 2;
 }
 
 
-void message2bufQuestion(char *buf, message_t *message, int *endPos){
+void message2bufQuestion(char *buf, message_t *message, int *endPos)
+{
 
     int bufPos = 0;
-    for(int entryNum = 0; entryNum < message->query_count;entryNum++) {
+    for (int entryNum = 0; entryNum < message->query_count; entryNum++)
+    {
         // QNAME
         char QNAME[message->queries[entryNum].name->length + 2];
-        char * transfer = name2message(message->queries[entryNum].name->value);
+        char *transfer = name2message(message->queries[entryNum].name->value);
         memcpy(QNAME, transfer, message->queries[entryNum].name->length + 2);
         free(transfer);
 
-        memcpy(&buf[bufPos], QNAME , message->queries[entryNum].name->length + 2);
+        memcpy(&buf[bufPos], QNAME, message->queries[entryNum].name->length + 2);
 
 
 
         // QTYPE
         bufPos += message->queries[entryNum].name->length + 2;
-        memcpy(&buf[bufPos], &(message->queries[entryNum].type) , sizeof(short));
+        memcpy(&buf[bufPos], &(message->queries[entryNum].type), sizeof(short));
         swap16(&buf[bufPos]);
 
         // QCLASS
         bufPos += 2;
-        memcpy(&buf[bufPos], &(message->queries[entryNum].class) , sizeof(short));
+        memcpy(&buf[bufPos], &(message->queries[entryNum].class), sizeof(short));
         swap16(&buf[bufPos]);
 
         *endPos += bufPos + 2;
@@ -863,65 +874,89 @@ void message2bufQuestion(char *buf, message_t *message, int *endPos){
 }
 
 
-void message2bufAnswer(char *buf, message_t *message, int *endPos){
+void message2bufAnswer(char *buf, message_t *message, int *endPos)
+{
 
     int bufPos = 0;
 
-    for(int entryNum = 0; entryNum < message->answer_count;entryNum++) {
+    for (int entryNum = 0; entryNum < message->answer_count; entryNum++)
+    {
         // NAME
         char NAME[message->answers[entryNum].name->length + 2];
-        char * transfer = name2message(message->answers[entryNum].name->value);
+        char *transfer = name2message(message->answers[entryNum].name->value);
         memcpy(NAME, transfer, message->answers[entryNum].name->length + 2);
         free(transfer);
 
-        memcpy(&buf[bufPos], NAME , message->answers[entryNum].name->length + 2);
+        memcpy(&buf[bufPos], NAME, message->answers[entryNum].name->length + 2);
 
 
 
         // TYPE
         bufPos += message->answers[entryNum].name->length + 2;
-        memcpy(&buf[bufPos], &(message->answers[entryNum].type) , sizeof(short));
+        memcpy(&buf[bufPos], &(message->answers[entryNum].type), sizeof(short));
         swap16(&buf[bufPos]);
 
         // CLASS
         bufPos += 2;
-        memcpy(&buf[bufPos], &(message->answers[entryNum].class) , sizeof(short));
+        memcpy(&buf[bufPos], &(message->answers[entryNum].class), sizeof(short));
         swap16(&buf[bufPos]);
 
         // TTL
         bufPos += 2;
-        memcpy(&buf[bufPos], &(message->answers[entryNum].ttl) , sizeof(int));
+        memcpy(&buf[bufPos], &(message->answers[entryNum].ttl), sizeof(int));
         swap32(&buf[bufPos]);
 
         // RDLENGTH
-        bufPos += 4;
-        memcpy(&buf[bufPos], &(message->answers[entryNum].response_data_length) , sizeof(short));
-        swap16(&buf[bufPos]);
+        switch (message->answers[entryNum].type)
+        {
+            case 1:
+                // A
+                bufPos += 4;
+                memcpy(&buf[bufPos], &(message->answers[entryNum].response_data_length), sizeof(short));
+                swap16(&buf[bufPos]);
+                break;
+            case 5:
+                // CNAME
+                bufPos += 4;
+                unsigned short domain_length = ((string_t*)message->answers[entryNum].response_data)->length + 2;
+                memcpy(&buf[bufPos], &domain_length, sizeof(short));
+                swap16(&buf[bufPos]);
+                break;
+            case 28:
+                // AAAA
+                bufPos += 4;
+                memcpy(&buf[bufPos], &(message->answers[entryNum].response_data_length), sizeof(short));
+                swap16(&buf[bufPos]);
+                break;
+        }
+
+
 
         // RDATA
         bufPos += 2;
 
-        switch (message->answers[entryNum].type) {
+        switch (message->answers[entryNum].type)
+        {
             case 1:
                 // A
-                memcpy(&buf[bufPos], &(message->answers[entryNum].response_data) , sizeof(int));
+                memcpy(&buf[bufPos], &(message->answers[entryNum].response_data), sizeof(int));
                 swap32(&buf[bufPos]);
                 break;
             case 5:
                 // CNAME
-                {
-                    string_t *data = (string_t *) message->answers[entryNum].response_data;
-                    char CNAME[data->length + 2];
-                    char *transferCNAME = name2message(data->value);
-                    memcpy(CNAME, transferCNAME, data->length + 2);
-                    free(transferCNAME);
+            {
+                string_t *data = (string_t *) message->answers[entryNum].response_data;
+                char CNAME[data->length + 2];
+                char *transferCNAME = name2message(data->value);
+                memcpy(CNAME, transferCNAME, data->length + 2);
+                free(transferCNAME);
 
-                    memcpy(&buf[bufPos], CNAME, data->length + 2);
-                    break;
-                }
+                memcpy(&buf[bufPos], CNAME, data->length + 2);
+                break;
+            }
             case 28:
                 // AAAA
-                memcpy(&buf[bufPos], &(message->answers[entryNum].response_data) , 16 * sizeof(char));
+                memcpy(&buf[bufPos], &(message->answers[entryNum].response_data), 16 * sizeof(char));
                 break;
         }
 
