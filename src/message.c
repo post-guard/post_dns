@@ -54,6 +54,23 @@ void buf2messageQuestion(const char *buf, message_t *message, int *endPos);
 void buf2messageRR(const char *buf, message_t *message, const int *endPos, enum RR_TYPE type);
 
 /**
+ * 封装报头
+ * @param buf 生成的buffer
+ * @param message 封装信息
+ * @param endPos 这个函数执行完毕后，buf的长度
+ */
+void message2bufHeader(char *buf, message_t *message, int *endPos);
+
+/**
+ * 封装报文Question段
+ * @param buf 生成的buffer
+ * @param message 封装信息
+ * @param endPos 这个函数执行完毕后，buf的长度
+ */
+void message2bufQuestion(char *buf, message_t *message, int *endPos);
+
+
+/**
  * 将传入的char中的每一位分离到str数组中
  * @param ch 要传入的char
  * @param bit 输出的八位bit数组指针
@@ -61,13 +78,26 @@ void buf2messageRR(const char *buf, message_t *message, const int *endPos, enum 
 void char2bit(char ch, char *bit);
 
 /**
- *  将两个char拼接成一个short
+ * 将message中域名部分转换为DNS报文中的域名存储方式(length+mainPart+\0)
+ * @param domain_name message中域名部分
+ * @warning 使用后记得free掉这个返回值
+ * @return 一个DNS报文中的域名字符串
  */
-//short char2Short(char high, char low);
+char* name2message(const char* domain_name);
+
 
 uv_buf_t *message2buf(message_t *message)
 {
-    return NULL;
+    uv_buf_t *buf = (uv_buf_t *) malloc(sizeof (uv_buf_t));
+    buf->base = (char *) malloc(600 * sizeof(char));
+    int endPos = 0;
+
+    message2bufHeader(&buf->base[endPos], message, &endPos);
+    // 此时endPos = 12;
+
+    message2bufQuestion(&buf->base[endPos], message, &endPos);
+
+    log_information("Create: %s", bytes2hex(buf->base, 60));
 }
 
 message_t *buf2message(const uv_buf_t *buf)
@@ -75,7 +105,7 @@ message_t *buf2message(const uv_buf_t *buf)
     // 统一使用大端
     // 报头
 
-    message_t *message = malloc((sizeof(message_t)));
+    message_t *message = (message_t *) malloc(sizeof(message_t));
     // 指示解析完一个字段后，报文下一个到达的字节数
     int endPos = 0;
 
@@ -85,12 +115,12 @@ message_t *buf2message(const uv_buf_t *buf)
     endPos = 12;
 
     // Question段
-    if (buf->base[endPos] != 0)
+    if (endPos < buf->len)
     {
         buf2messageQuestion(&buf->base[endPos], message, &endPos);
     }
     // Answer段
-    if (buf->base[endPos] != 0)
+    if (message->answer_count > 1)
     {
         buf2messageRR(buf->base, message, &endPos, Answer);
     }
@@ -568,6 +598,32 @@ void printMessage(message_t *message)
     }
 }
 
+/**
+ * 十进制转二进制
+ * @param dec 十进制数
+ * @param bin 存放二进制各个位的数组
+ * @param length 二进制数组的长度
+ */
+void dec2bin(int dec,int * bin,int length){
+    int pos = 0;
+    while(dec > 0) {
+        bin[pos] = dec % 2;
+        dec = dec / 2;
+        pos++;
+    }
+
+    // 反转数组
+
+    int temp = 0;
+    int n = length;
+    for (int i = 0; i < n/2; ++i) {
+        temp = bin[n-i-1];
+        bin[n-i-1] = bin[i];
+        bin[i] = temp;
+    }
+}
+
+
 string_t *message2feature_string(message_t *message)
 {
     string_t *result = malloc(sizeof(string_t));
@@ -595,4 +651,111 @@ string_t *message2feature_string(message_t *message)
     }
     memcpy(&result->value[pos], &message->id, 2);
     return result;
+}
+
+char* name2message(const char* domain_name) {
+    char* output = (char*)malloc(strlen(domain_name) * 2 + 2);
+    char* current = output;
+    const char* token;
+    const char* delimiter = ".";
+    int length;
+    char* temp_domain = strdup(domain_name);
+
+    while ((token = strtok(temp_domain, delimiter)) != NULL) {
+        length = strlen(token);
+        sprintf(current, "%c%s", length, token);
+        current += length + 1;
+        temp_domain = NULL;
+    }
+
+    *current = 0;
+    *(current + 1) = '\0';
+
+    free(temp_domain);
+
+    return output;
+}
+
+
+void message2bufHeader(char *buf, message_t *message, int *endPos){
+
+    int bufPos = 0;
+
+    // id
+    memcpy(&buf[bufPos], &(message->id) , sizeof(short));
+    swap16(&buf[bufPos]);
+    // flags
+    bufPos+=2;
+
+    char flags[2]={0,0};
+    // QR Opcode AA TC RD
+    int flagsOpcode[4] = {0};
+    dec2bin(message->flags.Opcode,flagsOpcode,4);
+
+    int flagsBitA[8] = {message->flags.QR, flagsOpcode[0],
+                        flagsOpcode[1], flagsOpcode[2],
+                        flagsOpcode[3], message->flags.AA,
+                       message->flags.TC, message->flags.RD };
+    // RA Z RCODE
+    int flagsRCode[4] = {0};
+    dec2bin(message->flags.RCODE,flagsRCode,4);
+    int flagsBitB[8] = {message->flags.RA, message->flags.Z,
+                        message->flags.Z, message->flags.Z,
+                        flagsRCode[0], flagsRCode[1],
+                        flagsRCode[2], flagsRCode[3] };
+
+    for(int i = 0; i < 8 ;i++) {
+        flags[0] |= ( flagsBitA[7 - i] << i );
+        flags[1] |= ( flagsBitB[7 - i] << i );
+    }
+
+    memcpy(&buf[bufPos], flags , 2 * sizeof(char));
+
+    // QDCOUNT
+    bufPos += 2;
+    memcpy(&buf[bufPos], &(message->query_count) , sizeof(short));
+    swap16(&buf[bufPos]);
+    // ANCOUNT
+    bufPos += 2;
+    memcpy(&buf[bufPos], &(message->answer_count) , sizeof(short));
+    swap16(&buf[bufPos]);
+    // NSCOUNT
+    bufPos += 2;
+    memcpy(&buf[bufPos], &(message->nameserver_count) , sizeof(short));
+    swap16(&buf[bufPos]);
+    // ARCOUNT
+    bufPos += 2;
+    memcpy(&buf[bufPos], &(message->additional_count) , sizeof(short));
+    swap16(&buf[bufPos]);
+
+    *endPos =  bufPos + 2;
+}
+
+
+void message2bufQuestion(char *buf, message_t *message, int *endPos){
+
+    int bufPos = 0;
+    for(int entryNum = 0; entryNum < message->query_count;entryNum++) {
+        // QNAME
+        char QNAME[message->queries[entryNum].name->length + 2];
+        char * transfer = name2message(message->queries[entryNum].name->value);
+        memcpy(QNAME, transfer, message->queries[entryNum].name->length + 2);
+        free(transfer);
+
+        memcpy(&buf[bufPos], QNAME , message->queries[entryNum].name->length + 2);
+
+
+
+        // QTYPE
+        bufPos += message->queries[entryNum].name->length + 2;
+        memcpy(&buf[bufPos], &(message->queries[entryNum].type) , sizeof(short));
+        swap16(&buf[bufPos]);
+
+        // QCLASS
+        bufPos += 2;
+        memcpy(&buf[bufPos], &(message->queries[entryNum].class) , sizeof(short));
+        swap16(&buf[bufPos]);
+
+        *endPos += bufPos + 2;
+    }
 }

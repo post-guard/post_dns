@@ -52,4 +52,22 @@ void udp_alloc_buffer(uv_handle_t *handle, size_t suggest_size, uv_buf_t *buf);
  * UDP发送回调函数
  */
 void udp_on_send(uv_udp_send_t *req, int status);
+
+/**
+ * 大小端转换函数(short)
+ * @param p 起始地址
+ */
+void swap16(void * p);
+
+/**
+ * 大小端转换函数(int)
+ * @param p 起始地址
+ */
+void swap32(void * p);
+
+/**
+ * 大小端转换函数(longlong)
+ * @param p 起始地址
+ */
+void swap64(void * p);
 #endif //POST_DNS_UTILS_H
