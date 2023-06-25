@@ -99,6 +99,8 @@ void udp_on_send(uv_udp_send_t *req, int status)
     {
         log_error("发送UDP数据出错: %d", status);
     }
+
+    free(req);
 }
 
 

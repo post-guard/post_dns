@@ -4,17 +4,29 @@
 
 #ifndef POST_DNS_STRING_T_H
 #define POST_DNS_STRING_T_H
+
 #include "defines.h"
+
+#include <string.h>
+
+#define string_t_str(str) \
+    ({char string_t_result[str->length + 1]; \
+    memcpy(string_t_result, str->value, str->length); \
+    string_t_result[str->length] = '\0';     \
+    string_t_result;\
+    })
 
 /**
  * 字符串结构体
  */
-typedef struct {
+typedef struct
+{
     char *value;
     int length;
 } string_t;
 
-typedef struct {
+typedef struct
+{
     string_t **array;
     int length;
 } split_array_t;
@@ -61,6 +73,6 @@ split_array_t *string_t_split(const string_t *str, char separator);
  * 没有换行符
  * @param str 需要被打印的字符串
  */
-void string_t_print(const string_t *str);
+char *string_t_print(const string_t *str);
 
 #endif //POST_DNS_STRING_T_H

@@ -3,7 +3,6 @@
 //
 #include "string_t.h"
 #include "stdlib.h"
-#include "stdio.h"
 #include "string.h"
 
 /**
@@ -123,13 +122,12 @@ split_array_t *string_t_split(const string_t *str, char separator)
     return result;
 }
 
-void string_t_print(const string_t *str)
+char *string_t_print(const string_t *str)
 {
     char *print = malloc(sizeof(char) * (str->length + 1));
     print[str->length] = 0;
     strncpy(print, str->value, str->length);
-    printf("%s", print);
-    free(print);
+    return print;
 }
 
 static inline unsigned int murmur_32_scramble(unsigned int k) {
