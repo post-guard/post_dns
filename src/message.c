@@ -77,6 +77,14 @@ void message2bufQuestion(char *buf, message_t *message, int *endPos);
  */
 void char2bit(char ch, char *bit);
 
+/**
+ * 将message中域名部分转换为DNS报文中的域名存储方式(length+mainPart+\0)
+ * @param domain_name message中域名部分
+ * @warning 使用后记得free掉这个返回值
+ * @return 一个DNS报文中的域名字符串
+ */
+char* name2message(const char* domain_name);
+
 
 uv_buf_t *message2buf(message_t *message)
 {
@@ -86,7 +94,10 @@ uv_buf_t *message2buf(message_t *message)
 
     message2bufHeader(&buf->base[endPos], message, &endPos);
     // 此时endPos = 12;
-    log_information("Create: %s", bytes2hex(buf->base, 12));
+
+    message2bufQuestion(&buf->base[endPos], message, &endPos);
+
+    log_information("Create: %s", bytes2hex(buf->base, 60));
 }
 
 message_t *buf2message(const uv_buf_t *buf)
@@ -642,6 +653,29 @@ string_t *message2feature_string(message_t *message)
     return result;
 }
 
+char* name2message(const char* domain_name) {
+    char* output = (char*)malloc(strlen(domain_name) * 2 + 2);
+    char* current = output;
+    const char* token;
+    const char* delimiter = ".";
+    int length;
+    char* temp_domain = strdup(domain_name);
+
+    while ((token = strtok(temp_domain, delimiter)) != NULL) {
+        length = strlen(token);
+        sprintf(current, "%c%s", length, token);
+        current += length + 1;
+        temp_domain = NULL;
+    }
+
+    *current = 0;
+    *(current + 1) = '\0';
+
+    free(temp_domain);
+
+    return output;
+}
+
 
 void message2bufHeader(char *buf, message_t *message, int *endPos){
 
@@ -699,5 +733,29 @@ void message2bufHeader(char *buf, message_t *message, int *endPos){
 
 
 void message2bufQuestion(char *buf, message_t *message, int *endPos){
-    //message->queries->name
+
+    int bufPos = 0;
+    for(int entryNum = 0; entryNum < message->query_count;entryNum++) {
+        // QNAME
+        char QNAME[message->queries[entryNum].name->length + 2];
+        char * transfer = name2message(message->queries[entryNum].name->value);
+        memcpy(QNAME, transfer, message->queries[entryNum].name->length + 2);
+        free(transfer);
+
+        memcpy(&buf[bufPos], QNAME , message->queries[entryNum].name->length + 2);
+
+
+
+        // QTYPE
+        bufPos += message->queries[entryNum].name->length + 2;
+        memcpy(&buf[bufPos], &(message->queries[entryNum].type) , sizeof(short));
+        swap16(&buf[bufPos]);
+
+        // QCLASS
+        bufPos += 2;
+        memcpy(&buf[bufPos], &(message->queries[entryNum].class) , sizeof(short));
+        swap16(&buf[bufPos]);
+
+        *endPos += bufPos + 2;
+    }
 }
