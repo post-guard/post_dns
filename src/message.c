@@ -91,7 +91,7 @@ void char2bit(char ch, char *bit);
  * @warning 使用后记得free掉这个返回值
  * @return 一个DNS报文中的域名字符串
  */
-char *name2message(const char *domain_name);
+char *name2message(string_t *domain_name);
 
 
 uv_buf_t *message2buf(message_t *message)
@@ -147,7 +147,7 @@ void message_log(message_t *message)
 
     for (int i = 0; i < message->query_count; i++)
     {
-        char *query_domain = string_t_print(message->queries[i].name);
+        char *query_domain = string_print(message->queries[i].name);
         log_debug("DNS查询域名：%s", query_domain);
         free(query_domain);
     }
@@ -159,8 +159,8 @@ void message_log(message_t *message)
             case 1:
             {
                 // A
-                char *domain_name = string_t_print(message->answers[i].name);
-                char *ipv4_address = string_t_print(
+                char *domain_name = string_print(message->answers[i].name);
+                char *ipv4_address = string_print(
                         inet4address2string(*(int *) message->answers[i].response_data)
                 );
                 log_debug("域名%s A记录回答：%s", domain_name, ipv4_address);
@@ -171,8 +171,8 @@ void message_log(message_t *message)
             case 5:
             {
                 // CNAME
-                char *domain_name = string_t_print(message->answers[i].name);
-                char *answer_name = string_t_print((string_t *) message->answers[i].response_data);
+                char *domain_name = string_print(message->answers[i].name);
+                char *answer_name = string_print((string_t *) message->answers[i].response_data);
                 log_debug("域名%s CNAME记录回答%s", domain_name, answer_name);
                 free(domain_name);
                 free(answer_name);
@@ -181,8 +181,8 @@ void message_log(message_t *message)
             case 28:
             {
                 // AAAA
-                char *domain_name = string_t_print(message->answers[i].name);
-                char *ipv6_address = string_t_print(
+                char *domain_name = string_print(message->answers[i].name);
+                char *ipv6_address = string_print(
                         inet6address2string((const unsigned char *) message->answers[i].response_data)
                 );
                 log_debug("域名%s A记录回答：%s", domain_name, ipv6_address);
@@ -290,7 +290,7 @@ void buf2messageQuestion(const char *buf, message_t *message, int *endPos)
 
         QValue[QValuePos - 1] = '\0';
         char QResult[QValuePos];
-        message->queries[entryNum].name = string_malloc(strcpy(QResult, QValue), QValuePos - 1);
+        message->queries[entryNum].name = string_malloc(QValue, QValuePos - 1);
         // 注意这个length不包括末尾的\0
         bufPos++;
 
@@ -765,27 +765,25 @@ string_t *message2feature_string(message_t *message)
     return result;
 }
 
-char *name2message(const char *domain_name)
+char *name2message(string_t *domain_name)
 {
-    char *output = (char *) malloc(strlen(domain_name) * 2 + 2);
+    char *output = (char *) malloc(domain_name->length * 2 + 2);
     char *current = output;
-    const char *token;
-    const char *delimiter = ".";
-    int length;
-    char *temp_domain = strdup(domain_name);
-
-    while ((token = strtok(temp_domain, delimiter)) != NULL)
-    {
-        length = strlen(token);
-        sprintf(current, "%c%s", length, token);
-        current += length + 1;
-        temp_domain = NULL;
+    split_array_t *token = string_split(domain_name,'.');
+    for(int i = 0;i < token->length; i++) {
+        char *token_print = string_print(token->array[i]);
+        sprintf(current, "%c%s", token->array[i]->length, token_print);
+        current = current + token->array[i]->length + 1;
+        free(token_print);
     }
 
     *current = 0;
     *(current + 1) = '\0';
 
-    free(temp_domain);
+    for (int i = 0; i < token->length; i++)
+    {
+        string_free(token->array[i]);
+    }
 
     return output;
 }
@@ -856,7 +854,7 @@ void message2bufQuestion(char *buf, message_t *message, int *endPos)
     {
         // QNAME
         char QNAME[message->queries[entryNum].name->length + 2];
-        char *transfer = name2message(message->queries[entryNum].name->value);
+        char *transfer = name2message(message->queries[entryNum].name);
         memcpy(QNAME, transfer, message->queries[entryNum].name->length + 2);
         free(transfer);
 
@@ -888,7 +886,7 @@ void message2bufAnswer(char *buf, message_t *message, int *endPos)
     {
         // NAME
         char NAME[message->answers[entryNum].name->length + 2];
-        char *transfer = name2message(message->answers[entryNum].name->value);
+        char *transfer = name2message(message->answers[entryNum].name);
         memcpy(NAME, transfer, message->answers[entryNum].name->length + 2);
         free(transfer);
 
@@ -935,11 +933,8 @@ void message2bufAnswer(char *buf, message_t *message, int *endPos)
                 break;
         }
 
-
-
         // RDATA
         bufPos += 2;
-
         switch (message->answers[entryNum].type)
         {
             case 1:
@@ -953,7 +948,7 @@ void message2bufAnswer(char *buf, message_t *message, int *endPos)
             {
                 string_t *data = (string_t *) message->answers[entryNum].response_data;
                 char CNAME[data->length + 2];
-                char *transferCNAME = name2message(data->value);
+                char *transferCNAME = name2message(data);
                 memcpy(CNAME, transferCNAME, data->length + 2);
                 free(transferCNAME);
 

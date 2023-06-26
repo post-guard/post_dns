@@ -3,6 +3,7 @@
 #include "logging.h"
 #include "socket.h"
 #include "ipv4_cache.h"
+#include "cname_cache.h"
 
 uv_loop_t *loop;
 uv_signal_t signal_handler;
@@ -16,6 +17,7 @@ static void sigint_callback(uv_signal_t *handle, int signum)
 
         socket_free();
         ipv4_cache_free();
+        cname_cache_free();
 
         exit(0);
     }
@@ -33,6 +35,7 @@ int main(int argc, char **argv)
     socket_init();
     uv_signal_start(&signal_handler, sigint_callback, SIGINT);
     ipv4_cache_init();
+    cname_cache_init();
 
     return uv_run(loop, UV_RUN_DEFAULT);
 }

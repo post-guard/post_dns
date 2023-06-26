@@ -7,9 +7,13 @@
 #include "string_t.h"
 #include <time.h>
 
+typedef struct ipv4_node {
+    int address;
+    struct ipv4_node *next;
+} ipv4_node_t;
+
 typedef struct {
-    int *addresses;
-    int address_count;
+    ipv4_node_t *node;
     int ttl;
     time_t timestamp;
     bool manual;
