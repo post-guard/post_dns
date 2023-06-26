@@ -8,6 +8,7 @@
 #include "ipv4_cache.h"
 #include "cname_cache.h"
 #include "ipv6_cache.h"
+#include "config.h"
 
 struct sockaddr_in query_address;
 uv_udp_t query_socket;
@@ -127,7 +128,7 @@ void socket_init()
     clients_hash_table = hash_table_new();
 
     // 初始化dns服务器地址
-    uv_ip4_addr("10.3.9.44", 53, &dns_address);
+    uv_ip4_addr(dns_config.upstream_name, 53, &dns_address);
 }
 
 void socket_free()
@@ -292,6 +293,8 @@ static void bind_socket_read(
     // 判断是否命中缓存以及计算回复消息中answers的个数
     int answer_count = 0;
     bool cached = true;
+    // 判断是否被手动禁止
+    bool banned = false;
     for (int i = 0; cached and i < message->query_count; i++)
     {
         switch (message->queries[i].type)
@@ -319,7 +322,14 @@ static void bind_socket_read(
                 }
                 else
                 {
+                    if ((cache->manual = true and cache->node->address == 0))
+                    {
+                        banned = true;
+                        break;
+                    }
+
                     ipv4_node_t *node = cache->node;
+
                     while (node != NULL)
                     {
                         answer_count++;
@@ -389,98 +399,111 @@ static void bind_socket_read(
     }
     else
     {
-        // 第二遍循环
-        // 生成返回的消息
-        back_message->answer_count = answer_count;
-        back_message->answers = malloc(sizeof(resource_record_t) * answer_count);
-        answer_count = 0;
-
-        for (int i = 0; i < message->query_count; i++)
+        if (banned)
         {
-            switch (message->queries[i].type)
+            // 被封禁
+            back_message->flags.RCODE = 3;
+        }
+        else
+        {
+            // 第二遍循环
+            // 生成返回的消息
+            back_message->answer_count = answer_count;
+            back_message->answers = malloc(sizeof(resource_record_t) * answer_count);
+            answer_count = 0;
+
+            for (int i = 0; i < message->query_count; i++)
             {
-                case 1:
+                switch (message->queries[i].type)
                 {
-                    // A
-                    // 首先处理CNAME
-                    string_t *domain = message->queries[i].name;
-                    cname_cache_t *cname_cache = cname_cache_get(domain);
-
-                    while (cname_cache != NULL)
+                    case 1:
                     {
-                        generate_cname_response(&back_message->answers[answer_count], domain, cname_cache->name);
-                        answer_count++;
-                        domain = cname_cache->name;
-                        cname_cache = cname_cache_get(domain);
-                    }
+                        // A
+                        // 首先处理CNAME
+                        string_t *domain = message->queries[i].name;
+                        cname_cache_t *cname_cache = cname_cache_get(domain);
 
-                    ipv4_cache_t *cache = ipv4_cache_get(domain);
-                    if (cache == NULL)
-                    {
-                        log_warning("?");
-                    }
-                    else
-                    {
-                        ipv4_node_t *node = cache->node;
-
-                        while (node != NULL)
+                        while (cname_cache != NULL)
                         {
-                            generate_ipv4_response(&back_message->answers[answer_count], domain, node->address);
+                            generate_cname_response(&back_message->answers[answer_count], domain,
+                                                    cname_cache->name);
                             answer_count++;
-
-                            node = node->next;
+                            domain = cname_cache->name;
+                            cname_cache = cname_cache_get(domain);
                         }
-                    }
-                    break;
-                }
-                case 5:
-                {
-                    // CNAME
-                    string_t *domain = message->queries[i].name;
-                    cname_cache_t *cname_cache = cname_cache_get(domain);
 
-                    while (cname_cache != NULL)
-                    {
-                        generate_cname_response(&back_message->answers[answer_count], domain, cname_cache->name);
-                        answer_count++;
-                        domain = cname_cache->name;
-                        cname_cache = cname_cache_get(domain);
-                    }
-                    break;
-                }
-                case 28:
-                {
-                    // AAAA
-                    // 首先处理CNAME
-                    string_t *domain = message->queries[i].name;
-                    cname_cache_t *cname_cache = cname_cache_get(domain);
-
-                    while (cname_cache != NULL)
-                    {
-                        generate_cname_response(&back_message->answers[answer_count], domain, cname_cache->name);
-                        answer_count++;
-                        domain = cname_cache->name;
-                        cname_cache = cname_cache_get(domain);
-                    }
-
-                    ipv6_cache_t *cache = ipv6_cache_get(domain);
-                    if (cache == NULL)
-                    {
-                        log_warning("?");
-                    }
-                    else
-                    {
-                        ipv6_node_t *node = cache->node;
-
-                        while (node != NULL)
+                        ipv4_cache_t *cache = ipv4_cache_get(domain);
+                        if (cache == NULL)
                         {
-                            generate_ipv6_response(&back_message->answers[answer_count], domain, node->address);
-                            answer_count++;
-
-                            node = node->next;
+                            log_warning("?");
                         }
+                        else
+                        {
+                            ipv4_node_t *node = cache->node;
+
+                            while (node != NULL)
+                            {
+                                generate_ipv4_response(&back_message->answers[answer_count], domain,
+                                                       node->address);
+                                answer_count++;
+
+                                node = node->next;
+                            }
+                        }
+                        break;
                     }
-                    break;
+                    case 5:
+                    {
+                        // CNAME
+                        string_t *domain = message->queries[i].name;
+                        cname_cache_t *cname_cache = cname_cache_get(domain);
+
+                        while (cname_cache != NULL)
+                        {
+                            generate_cname_response(&back_message->answers[answer_count], domain,
+                                                    cname_cache->name);
+                            answer_count++;
+                            domain = cname_cache->name;
+                            cname_cache = cname_cache_get(domain);
+                        }
+                        break;
+                    }
+                    case 28:
+                    {
+                        // AAAA
+                        // 首先处理CNAME
+                        string_t *domain = message->queries[i].name;
+                        cname_cache_t *cname_cache = cname_cache_get(domain);
+
+                        while (cname_cache != NULL)
+                        {
+                            generate_cname_response(&back_message->answers[answer_count], domain,
+                                                    cname_cache->name);
+                            answer_count++;
+                            domain = cname_cache->name;
+                            cname_cache = cname_cache_get(domain);
+                        }
+
+                        ipv6_cache_t *cache = ipv6_cache_get(domain);
+                        if (cache == NULL)
+                        {
+                            log_warning("?");
+                        }
+                        else
+                        {
+                            ipv6_node_t *node = cache->node;
+
+                            while (node != NULL)
+                            {
+                                generate_ipv6_response(&back_message->answers[answer_count], domain,
+                                                       node->address);
+                                answer_count++;
+
+                                node = node->next;
+                            }
+                        }
+                        break;
+                    }
                 }
             }
         }

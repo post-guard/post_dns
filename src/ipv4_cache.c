@@ -32,6 +32,12 @@ void ipv4_cache_put(string_t *name, ipv4_cache_t *cache)
     }
     else
     {
+        if (old_cache->manual)
+        {
+            // 手动维护的缓存不清理
+            return;
+        }
+
         old_cache->ttl = cache->ttl;
         old_cache->timestamp = time(NULL);
         old_cache->manual = false;
@@ -81,7 +87,7 @@ void ipv4_cache_clear()
         {
             ipv4_cache_t *cache = node->data;
 
-            if (cache->timestamp + cache->ttl < now)
+            if (cache->manual == false and cache->timestamp + cache->ttl < now)
             {
                 // 顺便free点结构体内部的缓存
                 ipv4_node_t *p = cache->node;
@@ -104,4 +110,66 @@ void ipv4_cache_clear()
     {
         hash_table_remove(ipv4_table, result[i]);
     }
+}
+
+void ipv4_read_file(const char *file_name)
+{
+    FILE *file = fopen(file_name, "r");
+    if (file == NULL)
+    {
+        log_warning("读取ipv4配置文件失败");
+        return;
+    }
+
+    char *line = NULL;
+    size_t length;
+    while (true)
+    {
+        ssize_t read = getline(&line, &length, file);
+        if (read == -1)
+        {
+            break;
+        }
+
+        // 行的末尾有一个换行符
+        // 需要去掉
+        string_t *result = string_malloc(line, read);
+        split_array_t *array = string_split(result, ' ');
+        if (array->length == 2)
+        {
+            char address[array->array[1]->length + 1];
+            address[array->array[1]->length + 1] = '\0';
+            memcpy(address, array->array[1]->value, array->array[1]->length);
+
+            struct sockaddr_in address_in;
+            uv_ip4_addr(address, 0, &address_in);
+
+            ipv4_cache_t cache = {
+                    .timestamp = -1,
+                    .manual = false,
+                    .ttl = 1,
+            };
+            cache.node = malloc(sizeof(ipv4_node_t));
+            cache.node->address = address_in.sin_addr.s_addr;
+            cache.node->next = NULL;
+            ipv4_cache_put(string_dup(array->array[0]), &cache);
+        }
+        else
+        {
+            log_warning("非法的ipv4配置: %s", line);
+        }
+
+        for (int i = 0; i < array->length; i++)
+        {
+            string_free(array->array[i]);
+        }
+        free(array);
+        string_free(result);
+    }
+
+    if (line != NULL)
+    {
+        free(line);
+    }
+    fclose(file);
 }

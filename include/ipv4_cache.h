@@ -29,4 +29,6 @@ void ipv4_cache_free();
 
 void ipv4_cache_clear();
 
+void ipv4_read_file(const char *file_name);
+
 #endif //POST_DNS_IPV4_CACHE_H

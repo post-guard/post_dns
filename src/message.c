@@ -784,6 +784,7 @@ char *name2message(string_t *domain_name)
     {
         string_free(token->array[i]);
     }
+    free(token);
 
     return output;
 }
