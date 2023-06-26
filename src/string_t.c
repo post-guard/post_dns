@@ -15,7 +15,7 @@
  */
 unsigned int murmur3_32(const unsigned char* key, size_t len, unsigned int seed);
 
-string_t *string_t_malloc(const char *value, int length)
+string_t *string_malloc(const char *value, int length)
 {
     string_t *result = (string_t *) malloc(sizeof(string_t));
 
@@ -26,7 +26,7 @@ string_t *string_t_malloc(const char *value, int length)
     return result;
 }
 
-void string_t_free(string_t *pointer)
+void string_free(string_t *pointer)
 {
     if (pointer == NULL)
     {
@@ -39,7 +39,7 @@ void string_t_free(string_t *pointer)
     free(pointer);
 }
 
-bool string_t_equal(const string_t *a, const string_t *b)
+bool string_equal(const string_t *a, const string_t *b)
 {
     if (a == NULL || b == NULL)
     {
@@ -65,14 +65,14 @@ bool string_t_equal(const string_t *a, const string_t *b)
     return flag;
 }
 
-int string_t_hash_code(const string_t *str)
+int string_hash_code(const string_t *str)
 {
     unsigned int seed = 0x54623413;
 
     return murmur3_32((const unsigned char*)str->value, str->length, seed) & 0x7fffffff;
 }
 
-split_array_t *string_t_split(const string_t *str, char separator)
+split_array_t *string_split(const string_t *str, char separator)
 {
     split_array_t *result = malloc(sizeof(split_array_t));
 
@@ -128,6 +128,17 @@ char *string_t_print(const string_t *str)
     print[str->length] = 0;
     strncpy(print, str->value, str->length);
     return print;
+}
+
+string_t *string_dup(const string_t *target)
+{
+    string_t *result = malloc(sizeof(string_t));
+
+    result->value = malloc(sizeof(char ) * target->length);
+    memcpy(result->value, target->value, sizeof(char ) * target->length);
+    result->length = target->length;
+
+    return result;
 }
 
 static inline unsigned int murmur_32_scramble(unsigned int k) {

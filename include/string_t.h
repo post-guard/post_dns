@@ -9,13 +9,6 @@
 
 #include <string.h>
 
-#define string_t_str(str) \
-    ({char string_t_result[str->length + 1]; \
-    memcpy(string_t_result, str->value, str->length); \
-    string_t_result[str->length] = '\0';     \
-    string_t_result;\
-    })
-
 /**
  * 字符串结构体
  */
@@ -37,13 +30,13 @@ typedef struct
  * @param length 字符串长度
  * @return 字符串结构体指针
  */
-string_t *string_t_malloc(const char *value, int length);
+string_t *string_malloc(const char *value, int length);
 
 /**
  * 释放字符串结构体占用的内存
  * @param pointer 结构体指针
  */
-void string_t_free(string_t *pointer);
+void string_free(string_t *pointer);
 
 /**
  * 判断两个字符串是否相同
@@ -51,14 +44,14 @@ void string_t_free(string_t *pointer);
  * @param b 第二个字符串
  * @return true相等 反之false
  */
-bool string_t_equal(const string_t *a, const string_t *b);
+bool string_equal(const string_t *a, const string_t *b);
 
 /**
  * 计算字符串的哈希值
  * @param str 字符串指针
  * @return 哈希值
  */
-int string_t_hash_code(const string_t *str);
+int string_hash_code(const string_t *str);
 
 /**
  * 按照给定的字符分割字符串
@@ -66,7 +59,7 @@ int string_t_hash_code(const string_t *str);
  * @param separator 分割符
  * @return 分割结果数组
  */
-split_array_t *string_t_split(const string_t *str, char separator);
+split_array_t *string_split(const string_t *str, char separator);
 
 /**
  * 打印字符串
@@ -74,5 +67,12 @@ split_array_t *string_t_split(const string_t *str, char separator);
  * @param str 需要被打印的字符串
  */
 char *string_t_print(const string_t *str);
+
+/**
+ * 复制指定的字符串
+ * @param target 需要复制的字符串
+ * @return 复制之后的字符串指针
+ */
+string_t *string_dup(const string_t *target);
 
 #endif //POST_DNS_STRING_T_H

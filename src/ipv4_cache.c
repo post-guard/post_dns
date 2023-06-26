@@ -16,12 +16,13 @@ void ipv4_cache_init()
     cache_table = hash_table_new();
 }
 
-void ipv4_cache_put(string_t *name, ipv4_cache_t cache)
+void ipv4_cache_put(string_t *name, ipv4_cache_t *cache)
 {
     ipv4_cache_t *node = malloc(sizeof(ipv4_cache_t));
 
-    node->addresses = cache.addresses;
-    node->ttl = cache.ttl;
+    node->addresses = cache->addresses;
+    node->ttl = cache->ttl;
+    node->timestamp = time(NULL);
 
     char *domain_print = string_t_print(name);
     for (int i = 0; i < node->address_count; i++)
@@ -30,17 +31,18 @@ void ipv4_cache_put(string_t *name, ipv4_cache_t cache)
         char *address_print = string_t_print(address);
         log_information("A记录缓存添加%s-%s", domain_print, address_print);
         free(address_print);
-        string_t_free(address);
+        string_free(address);
     }
     free(domain_print);
 
     hash_table_put(cache_table, name, node);
 }
 
-ipv4_cache_t ipv4_cache_get(string_t *name)
+ipv4_cache_t *ipv4_cache_get(string_t *name)
 {
-    return *(ipv4_cache_t *) hash_table_get(cache_table, name);
+    return hash_table_get(cache_table, name);
 }
+
 
 void ipv4_cache_free()
 {

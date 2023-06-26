@@ -17,9 +17,9 @@ typedef struct {
 
 void ipv4_cache_init();
 
-void ipv4_cache_put(string_t *name, ipv4_cache_t cache);
+void ipv4_cache_put(string_t *name, ipv4_cache_t *cache);
 
-ipv4_cache_t ipv4_cache_get(string_t *name);
+ipv4_cache_t *ipv4_cache_get(string_t *name);
 
 void ipv4_cache_free();
 

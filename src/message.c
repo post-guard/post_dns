@@ -110,7 +110,6 @@ uv_buf_t *message2buf(message_t *message)
         message2bufAnswer(&buf->base[endPos], message, &endPos);
     }
     buf->len = endPos;
-    log_information("Create: %s", bytes2hex(buf->base, 120));
     return buf;
 }
 
@@ -134,7 +133,7 @@ message_t *buf2message(const uv_buf_t *buf)
         buf2messageQuestion(&buf->base[endPos], message, &endPos);
     }
     // Answer段
-    if (message->answer_count > 1)
+    if (message->answer_count > 0)
     {
         buf2messageRR(buf->base, message, &endPos, Answer);
     }
@@ -144,12 +143,12 @@ message_t *buf2message(const uv_buf_t *buf)
 
 void message_log(message_t *message)
 {
-    log_information("打印DNS包中的信息：");
+    log_debug("打印DNS包中的信息：");
 
     for (int i = 0; i < message->query_count; i++)
     {
         char *query_domain = string_t_print(message->queries[i].name);
-        log_information("DNS查询域名：%s", query_domain);
+        log_debug("DNS查询域名：%s", query_domain);
         free(query_domain);
     }
 
@@ -164,7 +163,7 @@ void message_log(message_t *message)
                 char *ipv4_address = string_t_print(
                         inet4address2string(*(int *) message->answers[i].response_data)
                 );
-                log_information("域名%s A记录回答：%s", domain_name, ipv4_address);
+                log_debug("域名%s A记录回答：%s", domain_name, ipv4_address);
                 free(domain_name);
                 free(ipv4_address);
                 break;
@@ -174,7 +173,7 @@ void message_log(message_t *message)
                 // CNAME
                 char *domain_name = string_t_print(message->answers[i].name);
                 char *answer_name = string_t_print((string_t *) message->answers[i].response_data);
-                log_information("域名%s CNAME记录回答%s", domain_name, answer_name);
+                log_debug("域名%s CNAME记录回答%s", domain_name, answer_name);
                 free(domain_name);
                 free(answer_name);
                 break;
@@ -186,7 +185,7 @@ void message_log(message_t *message)
                 char *ipv6_address = string_t_print(
                         inet6address2string((const unsigned char *) message->answers[i].response_data)
                 );
-                log_information("域名%s A记录回答：%s", domain_name, ipv6_address);
+                log_debug("域名%s A记录回答：%s", domain_name, ipv6_address);
                 free(domain_name);
                 free(ipv6_address);
                 break;
@@ -199,35 +198,41 @@ void message_log(message_t *message)
 
 void message_free(message_t *message)
 {
+    message_log(message);
     for (int i = 0; i < message->query_count; i++)
     {
-        string_t_free(message->queries[i].name);
+        string_free(message->queries[i].name);
     }
-    free(message->queries);
+    if (message->query_count > 0)
+    {
+        free(message->queries);
+    }
 
     for (int i = 0; i < message->answer_count; i++)
     {
         switch (message->answers[i].type)
         {
             case 1:
-                // A
+            case 28:
+                // A 和 AAAA
                 free(message->answers[i].response_data);
-                string_t_free(message->answers[i].name);
+                string_free(message->answers[i].name);
                 break;
             case 5:
-            case 28:
-                // AAAA 和 CNAME
-                string_t_free(message->answers[i].response_data);
-                string_t_free(message->answers[i].name);
+                // CNAME
+                string_free(message->answers[i].response_data);
+                string_free(message->answers[i].name);
                 break;
             default:
                 break;
         }
     }
-    free(message->answers);
 
-    free(message->authorities);
-    free(message->additional);
+    if (message->answer_count > 0)
+    {
+        free(message->answers);
+    }
+
     free(message);
 }
 
@@ -285,7 +290,7 @@ void buf2messageQuestion(const char *buf, message_t *message, int *endPos)
 
         QValue[QValuePos - 1] = '\0';
         char QResult[QValuePos];
-        message->queries[entryNum].name = string_t_malloc(strcpy(QResult, QValue), QValuePos - 1);
+        message->queries[entryNum].name = string_malloc(strcpy(QResult, QValue), QValuePos - 1);
         // 注意这个length不包括末尾的\0
         bufPos++;
 
@@ -339,7 +344,7 @@ void buf2messageRR(const char *buf, message_t *message, const int *endPos, enum 
 
         Name[namePos - 1] = '\0';
         char result[namePos];
-        resourceRecord[entryNum].name = string_t_malloc(strcpy(result, Name), namePos - 1);
+        resourceRecord[entryNum].name = string_malloc(strcpy(result, Name), namePos - 1);
         // 注意这个length不包括末尾的\0
         bufPos++;
 
@@ -442,7 +447,7 @@ int createName(const char *buf, int bufPos, char Name[], int *namePos)
         {
             // 检测到报文跳转指针
 
-            char high = (0 | buf[bufPos] & 0x3F) << 8;
+            char high = (0 | buf[bufPos] & 0x3F);
             bufPos++;
 
             // 指向要跳转的位置
@@ -918,7 +923,7 @@ void message2bufAnswer(char *buf, message_t *message, int *endPos)
             case 5:
                 // CNAME
                 bufPos += 4;
-                unsigned short domain_length = ((string_t*)message->answers[entryNum].response_data)->length + 2;
+                unsigned short domain_length = ((string_t *) message->answers[entryNum].response_data)->length + 2;
                 memcpy(&buf[bufPos], &domain_length, sizeof(short));
                 swap16(&buf[bufPos]);
                 break;

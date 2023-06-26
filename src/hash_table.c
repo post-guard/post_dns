@@ -33,7 +33,7 @@ hash_table_t *hash_table_new()
  */
 static void add_node(hash_table_t *table, string_t *name, void *data)
 {
-    int index = (string_t_hash_code(name) & INT_MAX) % table->capacity;
+    int index = (string_hash_code(name) & INT_MAX) % table->capacity;
 
     hash_node_t *node = &table->table[index];
 
@@ -76,6 +76,7 @@ static void resize(hash_table_t *table)
     table->capacity = newCapacity;
     table->threshold = newCapacity * LOAD_FACTOR;
     hash_node_t *newTable = malloc(sizeof(hash_table_t) * newCapacity);
+    memset(newTable, 0, sizeof(hash_table_t) * newCapacity);
     table->table = newTable;
 
     for (int i = 0; i < oldCapacity; i++)
@@ -112,14 +113,13 @@ void hash_table_put(hash_table_t *table, string_t *name, void *data)
         return;
     }
     uv_rwlock_wrlock(table->lock);
-    log_information("哈希表上锁");
 
-    int index = (string_t_hash_code(name) & INT_MAX) % table->capacity;
+    int index = (string_hash_code(name) & INT_MAX) % table->capacity;
     hash_node_t *node = &table->table[index];
 
     while (node != NULL and node->name != NULL)
     {
-        if (string_t_equal(node->name, name))
+        if (string_equal(node->name, name))
         {
             // 在哈希表中已经有对应的节点
             // 直接修改
@@ -127,7 +127,6 @@ void hash_table_put(hash_table_t *table, string_t *name, void *data)
             node->data = data;
             free(oldData);
             uv_rwlock_wrunlock(table->lock);
-            log_information("哈希表解锁");
             return;
         }
 
@@ -143,18 +142,17 @@ void hash_table_put(hash_table_t *table, string_t *name, void *data)
     }
 
     uv_rwlock_wrunlock(table->lock);
-    log_information("哈希表解锁");
 }
 
 void *hash_table_get(hash_table_t *table, string_t *name)
 {
-    int index = (string_t_hash_code(name) & INT_MAX) % table->capacity;
+    int index = (string_hash_code(name) & INT_MAX) % table->capacity;
 
     hash_node_t *node = &table->table[index];
 
-    while (node->name != NULL)
+    while (node != NULL and node->name != NULL)
     {
-        if (string_t_equal(node->name, name))
+        if (string_equal(node->name, name))
         {
             return node->data;
         }
@@ -167,7 +165,7 @@ void *hash_table_get(hash_table_t *table, string_t *name)
 
 void hash_table_remove(hash_table_t *table, string_t *name)
 {
-    int index = (string_t_hash_code(name) & INT_MAX) % table->capacity;
+    int index = (string_hash_code(name) & INT_MAX) % table->capacity;
 
     hash_node_t *head = &table->table[index];
     hash_node_t *node = head;
@@ -177,7 +175,7 @@ void hash_table_remove(hash_table_t *table, string_t *name)
     // 所以比较复杂
     while (node->name != NULL)
     {
-        if (string_t_equal(node->name, name))
+        if (string_equal(node->name, name))
         {
             uv_rwlock_wrlock(table->lock);
             if (last_node == NULL)
@@ -186,7 +184,7 @@ void hash_table_remove(hash_table_t *table, string_t *name)
                 if (node->next == NULL)
                 {
                     // 没有下一个节点
-                    string_t_free(node->name);
+                    string_free(node->name);
                     free(node->data);
                     node->name = NULL;
                     node->data = NULL;
@@ -204,7 +202,7 @@ void hash_table_remove(hash_table_t *table, string_t *name)
             {
                 // 不是头结点上的数据
                 last_node->next = node->next;
-                string_t_free(node->name);
+                string_free(node->name);
                 free(node->data);
                 free(node);
             }
@@ -226,7 +224,7 @@ void hash_table_free(hash_table_t *table)
 
         if (node->name != NULL)
         {
-            string_t_free(node->name);
+            string_free(node->name);
             free(node->data);
 
             node = node->next;
@@ -236,7 +234,7 @@ void hash_table_free(hash_table_t *table)
             {
                 hash_node_t *temp = node->next;
                 free(node->data);
-                string_t_free(node->name);
+                string_free(node->name);
                 free(node);
 
                 node = temp;
