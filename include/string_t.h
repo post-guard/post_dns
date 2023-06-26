@@ -66,7 +66,7 @@ split_array_t *string_split(const string_t *str, char separator);
  * 没有换行符
  * @param str 需要被打印的字符串
  */
-char *string_t_print(const string_t *str);
+char *string_print(const string_t *str);
 
 /**
  * 复制指定的字符串
