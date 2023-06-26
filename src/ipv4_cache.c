@@ -121,19 +121,18 @@ void ipv4_read_file(const char *file_name)
         return;
     }
 
-    char *line = NULL;
-    size_t length;
     while (true)
     {
-        ssize_t read = getline(&line, &length, file);
-        if (read == -1)
+        char buf[1024];
+        char *r = fgets(buf, 1024, file);
+        if (r == NULL)
         {
             break;
         }
 
         // 行的末尾有一个换行符
         // 需要去掉
-        string_t *result = string_malloc(line, read - 1);
+        string_t *result = string_malloc(buf, strlen(buf) - 1);
         split_array_t *array = string_split(result, ' ');
         if (array->length == 2)
         {
@@ -157,7 +156,7 @@ void ipv4_read_file(const char *file_name)
         }
         else
         {
-            log_warning("非法的ipv4配置: %s", line);
+            log_warning("非法的ipv4配置: %s", buf);
         }
 
         for (int i = 0; i < array->length; i++)
@@ -168,9 +167,5 @@ void ipv4_read_file(const char *file_name)
         string_free(result);
     }
 
-    if (line != NULL)
-    {
-        free(line);
-    }
     fclose(file);
 }
