@@ -242,7 +242,7 @@ void buf2messageHeader(const uv_buf_t *buf, message_t *message)
     message->id = char2Short(buf->base[0], buf->base[1]);
     char *flags = (char *) malloc(16 * sizeof(char));
     char2bit(buf->base[2], &flags[0]);
-    char2bit(buf->base[3], &flags[8]);
+    char2bit( buf->base[3], &flags[8]);
 
     message->flags.QR = flags[0];
     message->flags.Opcode = (flags[1] << 3) + (flags[2] << 2) + (flags[3] << 1) + flags[4];

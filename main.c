@@ -41,7 +41,6 @@ int main(int argc, char **argv)
     dns_config = config_init(argc, argv);
     log_information("程序启动");
 
-
     loop = uv_default_loop();
     uv_udp_init(loop, &query_socket);
     uv_udp_init(loop, &bind_socket);

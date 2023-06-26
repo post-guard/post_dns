@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <string.h>
-#include "logging.h"
 #include "defines.h"
 
 hash_table_t *hash_table_new()
@@ -185,6 +184,7 @@ void hash_table_remove(hash_table_t *table, string_t *name)
                 {
                     // 没有下一个节点
                     string_free(node->name);
+                    node->name = NULL;
                     free(node->data);
                     node->name = NULL;
                     node->data = NULL;

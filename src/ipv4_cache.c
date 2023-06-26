@@ -133,7 +133,7 @@ void ipv4_read_file(const char *file_name)
 
         // 行的末尾有一个换行符
         // 需要去掉
-        string_t *result = string_malloc(line, read);
+        string_t *result = string_malloc(line, read - 1);
         split_array_t *array = string_split(result, ' ');
         if (array->length == 2)
         {
@@ -150,6 +150,7 @@ void ipv4_read_file(const char *file_name)
                     .ttl = 1,
             };
             cache.node = malloc(sizeof(ipv4_node_t));
+            swap32(&address_in.sin_addr.s_addr);
             cache.node->address = address_in.sin_addr.s_addr;
             cache.node->next = NULL;
             ipv4_cache_put(string_dup(array->array[0]), &cache);

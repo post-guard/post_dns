@@ -35,6 +35,7 @@ static void generate_ipv6_response(resource_record_t *dest, string_t *name, unsi
 
 static void send_close(uv_handle_t *handler)
 {
+    log_debug("释放在发送请求的过程中分配的内存");
     uv_buf_t *buf = handler->data;
 
     if (buf != NULL)
