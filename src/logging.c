@@ -19,7 +19,7 @@ void logging_printf(logging_level_t level, const char * filename, int line, cons
                 head = "\033[34mDEBUG\033[0m";
                 break;
             case logging_information_level:
-                head = "\033[37mINFO\033[0m";
+                head = "\033[32mINFO\033[0m";
                 break;
             case logging_warning_level:
                 head = "\033[33mWARN\033[0m";

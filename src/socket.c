@@ -7,6 +7,7 @@
 #include "utils.h"
 #include "ipv4_cache.h"
 #include "cname_cache.h"
+#include "ipv6_cache.h"
 
 struct sockaddr_in query_address;
 uv_udp_t query_socket;
@@ -27,7 +28,9 @@ static void message_copy_header_queries(message_t *dest, message_t *src);
 
 static void generate_cname_response(resource_record_t *dest, string_t *domain, string_t *name);
 
-static void generate_a_response(resource_record_t *dest, string_t *name, int address);
+static void generate_ipv4_response(resource_record_t *dest, string_t *name, int address);
+
+static void generate_ipv6_response(resource_record_t *dest, string_t *name, unsigned char *address);
 
 static void send_close(uv_handle_t *handler)
 {
@@ -163,6 +166,11 @@ static void query_socket_read(
     ipv4_cache.ttl = 120;
     ipv4_cache.node = NULL;
     string_t *ipv6_domain = NULL;
+    ipv6_cache_t ipv6_cache;
+    ipv6_cache.manual = false;
+    ipv6_cache.timestamp = time(NULL);
+    ipv6_cache.ttl = 120;
+    ipv6_cache.node = NULL;
 
     for (int i = 0; i < message->answer_count; i++)
     {
@@ -206,12 +214,40 @@ static void query_socket_read(
                 cname_cache_put(cname_domain, &cname_cache);
                 break;
             }
+            case 28:
+            {
+                // AAAA
+                ipv6_domain = string_dup(message->answers[i].name);
+                ipv6_node_t *node = malloc(sizeof(ipv6_node_t));
+                node->next = NULL;
+                memcpy(node->address, message->answers[i].response_data, 16);
+
+                if (ipv6_cache.node == NULL)
+                {
+                    ipv6_cache.node = node;
+                }
+                else
+                {
+                    ipv6_node_t *p = ipv6_cache.node;
+
+                    while (p->next != NULL)
+                    {
+                        p = p->next;
+                    }
+                    p->next = node;
+                }
+                break;
+            }
         }
     }
 
     if (ipv4_domain != NULL)
     {
         ipv4_cache_put(ipv4_domain, &ipv4_cache);
+    }
+    if (ipv6_domain != NULL)
+    {
+        ipv6_cache_put(ipv6_domain, &ipv6_cache);
     }
 
     // 发送DNS回复包
@@ -312,6 +348,37 @@ static void bind_socket_read(
                 }
                 break;
             }
+            case 28:
+            {
+                // AAAA
+                // 首先处理CNAME
+                string_t *domain = message->queries[i].name;
+                cname_cache_t *cname_cache = cname_cache_get(domain);
+
+                while (cname_cache != NULL)
+                {
+                    answer_count++;
+                    domain = cname_cache->name;
+                    cname_cache = cname_cache_get(domain);
+                }
+
+                ipv6_cache_t *cache = ipv6_cache_get(domain);
+                if (cache == NULL)
+                {
+                    cached = false;
+                    break;
+                }
+                else
+                {
+                    ipv6_node_t *node = cache->node;
+                    while (node != NULL)
+                    {
+                        answer_count++;
+                        node = node->next;
+                    }
+                }
+                break;
+            }
         }
     }
 
@@ -358,7 +425,7 @@ static void bind_socket_read(
 
                         while (node != NULL)
                         {
-                            generate_a_response(&back_message->answers[answer_count], domain, node->address);
+                            generate_ipv4_response(&back_message->answers[answer_count], domain, node->address);
                             answer_count++;
 
                             node = node->next;
@@ -379,6 +446,41 @@ static void bind_socket_read(
                         domain = cname_cache->name;
                         cname_cache = cname_cache_get(domain);
                     }
+                    break;
+                }
+                case 28:
+                {
+                    // AAAA
+                    // 首先处理CNAME
+                    string_t *domain = message->queries[i].name;
+                    cname_cache_t *cname_cache = cname_cache_get(domain);
+
+                    while (cname_cache != NULL)
+                    {
+                        generate_cname_response(&back_message->answers[answer_count], domain, cname_cache->name);
+                        answer_count++;
+                        domain = cname_cache->name;
+                        cname_cache = cname_cache_get(domain);
+                    }
+
+                    ipv6_cache_t *cache = ipv6_cache_get(domain);
+                    if (cache == NULL)
+                    {
+                        log_warning("?");
+                    }
+                    else
+                    {
+                        ipv6_node_t *node = cache->node;
+
+                        while (node != NULL)
+                        {
+                            generate_ipv6_response(&back_message->answers[answer_count], domain, node->address);
+                            answer_count++;
+
+                            node = node->next;
+                        }
+                    }
+                    break;
                 }
             }
         }
@@ -425,13 +527,24 @@ static void generate_cname_response(resource_record_t *dest, string_t *domain, s
     dest->ttl = 120;
 }
 
-static void generate_a_response(resource_record_t *dest, string_t *name, int address)
+static void generate_ipv4_response(resource_record_t *dest, string_t *name, int address)
 {
     dest->name = string_dup(name);
     dest->response_data = malloc(4);
     *(int *) dest->response_data = address;
     dest->response_data_length = 4;
     dest->type = 1;
+    dest->class = 1;
+    dest->ttl = 120;
+}
+
+static void generate_ipv6_response(resource_record_t *dest, string_t *name, unsigned char *address)
+{
+    dest->name = string_dup(name);
+    dest->response_data = malloc(16);
+    memcpy(dest->response_data, address, 16);
+    dest->response_data_length = 16;
+    dest->type = 28;
     dest->class = 1;
     dest->ttl = 120;
 }
