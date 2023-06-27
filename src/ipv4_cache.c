@@ -32,7 +32,7 @@ void ipv4_cache_put(string_t *name, ipv4_cache_t *cache)
     }
     else
     {
-        if (old_cache->manual)
+        if (old_cache->manual == true)
         {
             // 手动维护的缓存不清理
             return;
@@ -114,6 +114,11 @@ void ipv4_cache_clear()
 
 void ipv4_read_file(const char *file_name)
 {
+    if (file_name == NULL)
+    {
+        return;
+    }
+
     FILE *file = fopen(file_name, "r");
     if (file == NULL)
     {
@@ -145,7 +150,7 @@ void ipv4_read_file(const char *file_name)
 
             ipv4_cache_t cache = {
                     .timestamp = -1,
-                    .manual = false,
+                    .manual = true,
                     .ttl = 1,
             };
             cache.node = malloc(sizeof(ipv4_node_t));
