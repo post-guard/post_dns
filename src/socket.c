@@ -547,7 +547,7 @@ static void generate_cname_response(resource_record_t *dest, string_t *domain, s
     dest->response_data = string_dup(name);
     dest->response_data_length = domain->length;
     dest->type = 5;
-    dest->class = 5;
+    dest->class = 1;
     dest->ttl = 120;
 }
 
